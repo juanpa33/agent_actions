@@ -1,0 +1,128 @@
+name: Análisis de acciones
+
+# Cómo se dispara:
+#   - A mano, desde la pestaña "Actions" de GitHub (botón "Run workflow").
+#   - Automáticamente todos los viernes, si descomentás el bloque "schedule".
+on:
+  workflow_dispatch:
+    inputs:
+      activos:
+        description: "Qué analizar"
+        required: true
+        default: "NVDA + YPF"
+        type: choice
+        options:
+          - "NVDA + YPF"
+          - "NVDA + YPF + top 10 NASDAQ"
+          - "Solo NVDA"
+          - "Solo YPF"
+      anios:
+        description: "Años de historia (2 para describir, 10 para validar de verdad)"
+        required: true
+        default: "2"
+        type: choice
+        options: ["2", "5", "10"]
+      estudio_eventos:
+        description: "Incluir estudio de eventos de SEC EDGAR (tarda más)"
+        required: true
+        default: true
+        type: boolean
+
+  # Para correrlo solo todos los viernes después del cierre de Wall Street,
+  # borrá el "#" de las tres líneas de abajo:
+  # schedule:
+  #   - cron: "0 22 * * 5"
+
+jobs:
+  analizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Traer el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Correr los tests
+        # Si los tests fallan, el análisis no corre. No tiene sentido producir
+        # un reporte con un motor que no pasa sus propias verificaciones.
+        run: python -m pytest tests/ -q
+
+      - name: Armar los parámetros
+        id: parametros
+        run: |
+          case "${{ inputs.activos || 'NVDA + YPF' }}" in
+            "NVDA + YPF")                  FLAGS="--solo NVDA,YPFD.BA" ;;
+            "NVDA + YPF + top 10 NASDAQ")  FLAGS="" ;;
+            "Solo NVDA")                   FLAGS="--solo NVDA" ;;
+            "Solo YPF")                    FLAGS="--solo YPFD.BA" ;;
+            *)                             FLAGS="--solo NVDA,YPFD.BA" ;;
+          esac
+          if [ "${{ inputs.estudio_eventos }}" = "false" ]; then
+            FLAGS="$FLAGS --sin-eventos"
+          fi
+          echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+          echo "anios=${{ inputs.anios || '2' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Correr el análisis
+        id: analisis
+        # continue-on-error para que el log y el reporte parcial queden
+        # disponibles aunque una fuente de datos haya fallado.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python scripts/run_analysis.py \
+            --anios "${{ steps.parametros.outputs.anios }}" \
+            ${{ steps.parametros.outputs.flags }} \
+            2>&1 | tee reports/log_de_ejecucion.txt
+
+      - name: Guardar el reporte
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reporte-acciones-${{ github.run_number }}
+          path: reports/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Resumen en pantalla
+        if: always()
+        run: |
+          {
+            echo "## Análisis de acciones"
+            echo ""
+            if [ "${{ steps.analisis.outcome }}" = "success" ]; then
+              echo "El análisis terminó bien. Descargá el reporte desde la sección"
+              echo "**Artifacts**, al final de esta página."
+            else
+              echo "El análisis FALLÓ. La causa más común es que el proveedor de datos"
+              echo "no respondió o limitó los pedidos desde los servidores de GitHub."
+              echo "Volvé a intentar en unos minutos, o corré el análisis en tu computadora."
+              echo ""
+              echo "El detalle del error está en \`log_de_ejecucion.txt\`, dentro de Artifacts."
+            fi
+            echo ""
+            echo "| Parámetro | Valor |"
+            echo "|---|---|"
+            echo "| Activos | ${{ inputs.activos || 'NVDA + YPF' }} |"
+            echo "| Años de historia | ${{ inputs.anios || '2' }} |"
+            echo "| Estudio de eventos | ${{ inputs.estudio_eventos }} |"
+            echo ""
+            echo "> Esto no es asesoramiento financiero."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reflejar el fallo del análisis
+        if: steps.analisis.outcome == 'failure'
+        run: |
+          echo "El análisis falló. Revisá el resumen y el log en Artifacts." >&2
+          exit 1

@@ -17,16 +17,32 @@ la suerte**.
 | Top 10 NASDAQ | dinámico | Resuelto desde las tenencias del ETF QQQ + capitalización |
 | Benchmark | `^NDX` | Nasdaq-100, base del modelo de mercado |
 
-## Instalación
+## Cómo lo corro
+
+**Guía paso a paso, sin jerga: [`docs/COMO_CORRERLO.md`](docs/COMO_CORRERLO.md)**
+
+### Opción A: en GitHub, sin instalar nada
+
+Pestaña **Actions** → **Análisis de acciones** → botón **Run workflow**. A los
+pocos minutos descargás el reporte desde la sección **Artifacts**.
+
+### Opción B: en tu computadora
 
 ```bash
-git clone <este-repo>
+git clone https://github.com/juanpa33/agent_actions.git
 cd agent_actions
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+git checkout claude/stock-review-agent-agct6q
+bash setup.sh          # Mac y Linux: instala y verifica todo
 ```
 
-## Uso
+Después, cada vez que quieras el reporte:
+
+```bash
+source .venv/bin/activate
+python scripts/run_analysis.py --solo NVDA,YPFD.BA
+```
+
+## Uso avanzado
 
 ```bash
 # Análisis completo: NVDA + YPFD.BA + top 10 del NASDAQ
@@ -137,6 +153,8 @@ eventos encuentra un shock inyectado sin inventar uno donde no lo hay.
 
 ## Documentación
 
+- [`docs/COMO_CORRERLO.md`](docs/COMO_CORRERLO.md) — cómo ejecutarlo y, sobre
+  todo, cómo leer el reporte que sale.
 - [`docs/METODOLOGIA.md`](docs/METODOLOGIA.md) — qué hace cada pieza y por qué es
   defendible, con las referencias completas.
 - [`docs/LIMITACIONES.md`](docs/LIMITACIONES.md) — lo que el sistema no puede
