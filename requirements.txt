@@ -1,0 +1,17 @@
+# Núcleo numérico
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+
+# Fuentes de datos de mercado (dos fuentes independientes para validación cruzada)
+yfinance>=0.2.40
+requests>=2.31
+
+# Configuración
+PyYAML>=6.0
+
+# Reportes
+matplotlib>=3.8
+
+# Tests
+pytest>=8.0

@@ -1,0 +1,66 @@
+# Configuración del análisis.
+#
+# Los parámetros de señales NO deben tocarse para "mejorar" el backtest: cada
+# uno viene del paper que lo validó fuera de muestra. Ajustarlos contra estos
+# datos es sobreajuste, y el Deflated Sharpe lo va a delatar.
+
+ventana:
+  anios_reportados: 2.0        # período que se analiza y reporta
+  # Se descargan 1,5 años adicionales de calentamiento para que los indicadores
+  # (SMA 200, máximo de 52 semanas, momentum 12-1) estén definidos desde el día uno.
+
+activos:
+  nvidia:
+    ticker: NVDA
+    nombre: NVIDIA
+    mercado: NASDAQ
+    moneda: USD
+  ypf_local:
+    ticker: YPFD.BA
+    nombre: YPF (BYMA, convertido a USD CCL)
+    mercado: BYMA
+    moneda: USD_CCL
+    adr_para_ccl: YPF
+  benchmark:
+    ticker: ^NDX
+    nombre: Nasdaq-100
+
+nasdaq_top:
+  cantidad: 10
+  permitir_respaldo: true      # si es false, el pipeline aborta cuando no resuelve el universo
+
+estrategia:
+  # Todos estos valores provienen de literatura publicada. Ver docs/METODOLOGIA.md
+  momentum_lookback_meses: 12  # Moskowitz, Ooi & Pedersen (2012)
+  momentum_skip_meses: 1       # Jegadeesh (1990)
+  sma_tendencia: 200           # Faber (2007)
+  maximo_52_semanas: 252       # George & Hwang (2004)
+  umbral_cercania_maximo: 0.75
+  umbral_voto: 0.60            # 2 de 3 señales
+  volatilidad_objetivo_anual: 0.15
+  multiplo_atr_stop: 3.0
+  rebalanceo: W-FRI            # semanal, coherente con horizonte de semanas a meses
+
+costos:
+  # REEMPLAZAR por el tarifario real de tu comitente antes de operar.
+  eeuu:
+    comision: 0.0000
+    derechos_mercado: 0.0000
+    deslizamiento: 0.0005
+  byma:
+    comision: 0.0050
+    derechos_mercado: 0.0008
+    deslizamiento: 0.0020
+
+validacion:
+  tolerancia_discrepancia_fuentes_pct: 1.0
+  tramos_walk_forward: 4
+  configuraciones_evaluadas: 1   # CRÍTICO: subir este número si probás variantes.
+                                 # Es el insumo del Deflated Sharpe. Declararlo
+                                 # de menos infla la significancia del resultado.
+
+eventos:
+  formularios_sec: ["8-K", "6-K"]
+  ventana_previa_dias: 1
+  ventana_posterior_dias: 3
+  archivo_eventos_manuales: config/eventos_manuales.json
