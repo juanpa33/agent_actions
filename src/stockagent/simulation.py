@@ -26,6 +26,9 @@ import numpy as np
 import pandas as pd
 
 from .backtest import CostModel
+from .taxes import (
+    RegistroFiscal, TaxModel, dividendo_neto, impuesto_patrimonial, impuesto_por_venta,
+)
 
 
 @dataclass
@@ -80,6 +83,15 @@ class ConfigEscalonada:
 
 @dataclass
 class ResultadoSimulacion:
+    """Resultado de una simulación.
+
+    LIMITACIÓN CONOCIDA: la caja puede quedar negativa cuando toca pagar el
+    impuesto patrimonial y todo el capital está en acciones. En la realidad eso
+    significa que ese impuesto lo pagás con plata de afuera (tu sueldo) o vendiendo
+    acciones. La simulación NO vende automáticamente para cubrirlo, así que un
+    saldo negativo hay que leerlo como "acá tuviste que poner plata de tu bolsillo".
+    """
+
     nombre: str
     transacciones: list[Transaccion]
     capital_inicial: float
@@ -90,6 +102,9 @@ class ResultadoSimulacion:
     costos_totales: float
     precio_inicial: float
     precio_final: float
+    impuestos_pagados: float = 0.0
+    ganancia_no_realizada: float = 0.0
+    modelo_impositivo: str = "sin impuestos"
     fecha_inicio: pd.Timestamp | None = None
     serie_patrimonio: pd.Series = field(default_factory=pd.Series)
 
@@ -105,6 +120,14 @@ class ResultadoSimulacion:
     def retorno_pct(self) -> float:
         return self.ganancia / self.capital_inicial if self.capital_inicial else float("nan")
 
+    def valor_si_liquidas_hoy(self, tasa_ganancias: float) -> float:
+        """Patrimonio si vendieras todo ahora y pagaras el impuesto pendiente.
+
+        Es la única comparación justa contra una estrategia que ya vendió: quien
+        mantiene tiene una deuda impositiva latente que todavía no pagó.
+        """
+        return self.valor_final - max(self.ganancia_no_realizada, 0.0) * tasa_ganancias
+
     @property
     def n_compras(self) -> int:
         return sum(1 for t in self.transacciones if t.tipo == "COMPRA")
@@ -112,6 +135,11 @@ class ResultadoSimulacion:
     @property
     def n_ventas(self) -> int:
         return sum(1 for t in self.transacciones if t.tipo == "VENTA")
+
+    @property
+    def requirio_aporte_externo(self) -> bool:
+        """Hubo momentos con caja negativa: hizo falta plata de afuera."""
+        return any(t.caja_despues < -1e-6 for t in self.transacciones)
 
     def resumen(self, moneda: str = "USD") -> str:
         if self.nunca_opero:
@@ -133,8 +161,19 @@ class ResultadoSimulacion:
             f"({self.retorno_pct * 100:+.1f}%)",
             f"  Dividendos cobrados:    {moneda} {self.dividendos_cobrados:>12,.2f}",
             f"  Costos pagados:         {moneda} {self.costos_totales:>12,.2f}",
+            f"  IMPUESTOS pagados:      {moneda} {self.impuestos_pagados:>12,.2f}",
             f"  Operaciones:            {self.n_compras} compras, {self.n_ventas} ventas",
         ]
+        if self.requirio_aporte_externo:
+            lineas.append(
+                "  AVISO: la caja quedó negativa en algún momento. Ese impuesto "
+                "habría que pagarlo con plata de afuera o vendiendo acciones."
+            )
+        if self.ganancia_no_realizada > 0:
+            lineas.append(
+                f"  Ganancia latente sin realizar: {moneda} "
+                f"{self.ganancia_no_realizada:,.2f} (todavía no pagó impuesto)"
+            )
         return "\n".join(lineas)
 
     def libro(self, maximo: int = 40) -> str:
@@ -196,6 +235,7 @@ def simular_escalonada(
     config: ConfigEscalonada | None = None,
     costos: CostModel | None = None,
     nombre: str = "Escalonada (vender de a pedazos)",
+    impuestos: TaxModel | None = None,
 ) -> ResultadoSimulacion:
     """Simula comprar cerca de mínimos y vender PARCIALMENTE cerca de máximos.
 
@@ -211,6 +251,8 @@ def simular_escalonada(
     """
     cfg = config or ConfigEscalonada()
     costo = costos or CostModel.us_equity()
+    fisco = impuestos or TaxModel.sin_impuestos()
+    registro = RegistroFiscal()
     px = precios.dropna()
     div = dividendos if dividendos is not None else pd.Series(dtype="float64")
 
@@ -231,8 +273,10 @@ def simular_escalonada(
     acciones = 0.0
     dividendos_cobrados = 0.0
     costos_totales = 0.0
+    impuestos_pagados = 0.0
     transacciones: list[Transaccion] = []
     ultima_operacion: pd.Timestamp | None = None
+    ultimo_anio_liquidado: int | None = None
     patrimonio = pd.Series(np.nan, index=px.index, dtype="float64")
 
     fechas = list(px.index)
@@ -243,12 +287,30 @@ def simular_escalonada(
         if ts in div.index and acciones > 0:
             por_accion = float(div.loc[ts])
             bruto = por_accion * acciones
-            caja += bruto
-            dividendos_cobrados += bruto
+            neto, retenido = dividendo_neto(bruto, fisco)
+            caja += neto
+            dividendos_cobrados += neto
+            impuestos_pagados += retenido
             transacciones.append(
-                Transaccion(ts, "DIVIDENDO", acciones, por_accion, bruto, 0.0, bruto,
-                            acciones, caja, f"{por_accion:.4f} por acción")
+                Transaccion(ts, "DIVIDENDO", acciones, por_accion, bruto, retenido, neto,
+                            acciones, caja,
+                            f"{por_accion:.4f} por acción, retención {retenido:,.2f}")
             )
+
+        # --- Impuesto patrimonial anual, al cierre de cada año ---
+        if fisco.wealth_tax_rate > 0 and ts.month == 12 and ts.day >= 28:
+            if ultimo_anio_liquidado != ts.year:
+                patrimonio_actual = acciones * precio_hoy + caja
+                gravamen = impuesto_patrimonial(patrimonio_actual, fisco)
+                if gravamen > 0:
+                    caja -= gravamen
+                    impuestos_pagados += gravamen
+                    transacciones.append(
+                        Transaccion(ts, "IMP.TENENCIA", 0.0, 0.0, patrimonio_actual,
+                                    gravamen, -gravamen, acciones, caja,
+                                    f"{fisco.wealth_tax_rate * 100:.2f}% sobre la tenencia")
+                    )
+                ultimo_anio_liquidado = ts.year
 
         patrimonio.loc[ts] = acciones * precio_hoy + caja
 
@@ -273,14 +335,20 @@ def simular_escalonada(
             if a_vender > 0.01:
                 bruto = a_vender * precio_ejecucion
                 comision = bruto * costo.total_one_way
-                caja += bruto - comision
+                ganancia, _ = registro.vender(a_vender, precio_ejecucion)
+                gravamen = impuesto_por_venta(ganancia, fisco)
+                caja += bruto - comision - gravamen
                 acciones -= a_vender
                 costos_totales += comision
+                impuestos_pagados += gravamen
                 ultima_operacion = fecha_ejecucion
+                nota = f"a {precio_hoy / m_alto:.0%} del máximo, ganancia {ganancia:+,.2f}"
+                if gravamen > 0:
+                    nota += f", impuesto {gravamen:,.2f}"
                 transacciones.append(
                     Transaccion(fecha_ejecucion, "VENTA", a_vender, precio_ejecucion,
-                                bruto, comision, bruto - comision, acciones, caja,
-                                f"a {precio_hoy / m_alto:.0%} del máximo")
+                                bruto, comision + gravamen,
+                                bruto - comision - gravamen, acciones, caja, nota)
                 )
 
         elif cerca_del_minimo and acciones < cfg.acciones_objetivo:
@@ -293,6 +361,7 @@ def simular_escalonada(
                 caja -= bruto + comision
                 acciones += a_comprar
                 costos_totales += comision
+                registro.comprar(fecha_ejecucion, a_comprar, precio_ejecucion)
                 ultima_operacion = fecha_ejecucion
                 transacciones.append(
                     Transaccion(fecha_ejecucion, "COMPRA", a_comprar, precio_ejecucion,
@@ -312,6 +381,9 @@ def simular_escalonada(
         costos_totales=costos_totales,
         precio_inicial=float(px.loc[inicio]),
         precio_final=precio_final,
+        impuestos_pagados=impuestos_pagados,
+        ganancia_no_realizada=registro.ganancia_no_realizada(precio_final),
+        modelo_impositivo=fisco.nombre,
         fecha_inicio=inicio,
         serie_patrimonio=patrimonio.dropna(),
     )
@@ -323,9 +395,17 @@ def simular_comprar_y_mantener(
     acciones: int = 100,
     costos: CostModel | None = None,
     desde: pd.Timestamp | None = None,
+    impuestos: TaxModel | None = None,
 ) -> ResultadoSimulacion:
-    """Comprar las acciones una vez y no tocar nada, cobrando los dividendos."""
+    """Comprar las acciones una vez y no tocar nada, cobrando los dividendos.
+
+    Punto clave para entender la ventaja fiscal de mantener: como nunca vende,
+    NO paga impuesto a la ganancia. Toda la ganancia queda latente y sigue
+    componiendo. El impuesto existe, pero se paga recién el día que vendas, y
+    mientras tanto esa plata trabaja para vos.
+    """
     costo = costos or CostModel.us_equity()
+    fisco = impuestos or TaxModel.sin_impuestos()
     px = precios.dropna()
     div = dividendos if dividendos is not None else pd.Series(dtype="float64")
 
@@ -335,6 +415,7 @@ def simular_comprar_y_mantener(
     comision = capital * costo.total_one_way
     caja = -comision
     dividendos_cobrados = 0.0
+    impuestos_pagados = 0.0
 
     transacciones = [
         Transaccion(inicio, "COMPRA", acciones, precio_compra, capital, comision,
@@ -344,12 +425,32 @@ def simular_comprar_y_mantener(
     for ts, por_accion in div.items():
         if ts >= inicio and ts <= px.index[-1]:
             bruto = float(por_accion) * acciones
-            caja += bruto
-            dividendos_cobrados += bruto
+            neto, retenido = dividendo_neto(bruto, fisco)
+            caja += neto
+            dividendos_cobrados += neto
+            impuestos_pagados += retenido
             transacciones.append(
-                Transaccion(ts, "DIVIDENDO", acciones, float(por_accion), bruto, 0.0,
-                            bruto, acciones, caja, "")
+                Transaccion(ts, "DIVIDENDO", acciones, float(por_accion), bruto,
+                            retenido, neto, acciones, caja,
+                            f"retención {retenido:,.2f}" if retenido else "")
             )
+
+    # Impuesto patrimonial anual sobre la tenencia
+    if fisco.wealth_tax_rate > 0:
+        ventana_px = px.loc[inicio:]
+        for anio in sorted({d.year for d in ventana_px.index}):
+            del_anio = ventana_px[ventana_px.index.year == anio]
+            cierre = del_anio.index[-1]
+            gravamen = impuesto_patrimonial(acciones * float(del_anio.iloc[-1]) + caja, fisco)
+            if gravamen > 0:
+                caja -= gravamen
+                impuestos_pagados += gravamen
+                transacciones.append(
+                    Transaccion(cierre, "IMP.TENENCIA", 0.0, 0.0,
+                                acciones * float(del_anio.iloc[-1]), gravamen,
+                                -gravamen, float(acciones), caja,
+                                f"{fisco.wealth_tax_rate * 100:.2f}% sobre la tenencia")
+                )
 
     precio_final = float(px.iloc[-1])
     ventana = px.loc[inicio:]
@@ -364,6 +465,10 @@ def simular_comprar_y_mantener(
         costos_totales=comision,
         precio_inicial=precio_compra,
         precio_final=precio_final,
+        impuestos_pagados=impuestos_pagados,
+        # Ganancia latente: nunca vendió, así que este impuesto está postergado.
+        ganancia_no_realizada=acciones * (precio_final - precio_compra),
+        modelo_impositivo=fisco.nombre,
         fecha_inicio=inicio,
         serie_patrimonio=(ventana * acciones + caja),
     )

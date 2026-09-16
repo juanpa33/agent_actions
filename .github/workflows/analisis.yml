@@ -42,6 +42,12 @@ on:
         required: true
         default: "100"
         type: string
+      regimen_impositivo:
+        description: "Impuestos a aplicar (VERIFICÁ las alícuotas con tu contador)"
+        required: true
+        default: "adr"
+        type: choice
+        options: ["adr", "cedear", "ninguno", "local"]
 
   # Para correrlo solo todos los viernes después del cierre de Wall Street,
   # borrá el "#" de las tres líneas de abajo:
@@ -116,6 +122,7 @@ jobs:
               --ticker "$TICKER" \
               --acciones "${{ inputs.acciones_a_simular || '100' }}" \
               --anios "${{ steps.parametros.outputs.anios }}" \
+              --impuestos "${{ inputs.regimen_impositivo || 'adr' }}" \
               --salida "reports/simulacion_${TICKER}.md" \
               || echo "Falló la simulación de $TICKER (ver el error arriba)"
           done 2>&1 | tee reports/log_simulacion.txt
@@ -153,6 +160,7 @@ jobs:
             echo "| Estudio de eventos | ${{ inputs.estudio_eventos }} |"
             echo "| Comparar estrategias | ${{ inputs.comparar_estrategias }} |"
             echo "| Simulación en dinero | ${{ inputs.simular_dinero }} |"
+            echo "| Régimen impositivo | ${{ inputs.regimen_impositivo }} |"
             echo ""
             echo "> Esto no es asesoramiento financiero."
           } >> "$GITHUB_STEP_SUMMARY"

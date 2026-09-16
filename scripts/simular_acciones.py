@@ -33,6 +33,7 @@ sys.path.insert(0, str(ROOT / "src"))
 import pandas as pd  # noqa: E402
 
 from stockagent import simulation as sim  # noqa: E402
+from stockagent import taxes as tx  # noqa: E402
 from stockagent.backtest import CostModel  # noqa: E402
 from stockagent.datasources import yahoo  # noqa: E402
 from stockagent.pipeline import default_window  # noqa: E402
@@ -48,6 +49,9 @@ def main() -> int:
                         help="Qué porción se vende en cada toma de ganancia")
     parser.add_argument("--nucleo", type=float, default=0.25,
                         help="Porción de la posición que nunca se vende")
+    parser.add_argument("--impuestos", default="adr",
+                        choices=["ninguno", "adr", "cedear", "local"],
+                        help="Régimen impositivo a aplicar (verificá las alícuotas)")
     parser.add_argument("--salida", default=str(ROOT / "reports" / "simulacion.md"))
     args = parser.parse_args()
 
@@ -69,8 +73,19 @@ def main() -> int:
     print(f"  {len(precios)} ruedas, de {precios.index[0]:%Y-%m-%d} a {precios.index[-1]:%Y-%m-%d}")
     print(f"  Precio: {precios.iloc[0]:,.2f} -> {precios.iloc[-1]:,.2f} "
           f"({(precios.iloc[-1] / precios.iloc[0] - 1) * 100:+.1f}%)")
+    fisco = {
+        "ninguno": tx.TaxModel.sin_impuestos(),
+        "adr": tx.TaxModel.adr_o_accion_extranjera(),
+        "cedear": tx.TaxModel.cedear(),
+        "local": tx.TaxModel.accion_local_byma(),
+    }[args.impuestos]
+
     print(f"  Dividendos pagados en el período: {len(dividendos)}"
           + (f", total {dividendos.sum():,.4f} por acción" if len(dividendos) else ""))
+    print()
+    print("Régimen impositivo aplicado:")
+    for linea in fisco.resumen().splitlines():
+        print(f"  {linea}")
     print()
 
     # Fecha común de arranque: todas las estrategias deben partir del mismo día
@@ -97,7 +112,8 @@ def main() -> int:
         fraccion_venta=args.fraccion_venta,
         fraccion_nucleo=args.nucleo,
     )
-    escalonada = sim.simular_escalonada(precios, dividendos, cfg_escalonada, costos)
+    escalonada = sim.simular_escalonada(precios, dividendos, cfg_escalonada, costos,
+                                        impuestos=fisco)
     resultados.append(escalonada)
 
     # 3. Todo o nada: misma regla, vende la posición entera
@@ -105,13 +121,14 @@ def main() -> int:
         acciones_objetivo=args.acciones, fraccion_venta=1.0, fraccion_nucleo=0.0,
     )
     todo_o_nada = sim.simular_escalonada(
-        precios, dividendos, cfg_todo, costos, nombre="Todo o nada (vende la posición entera)"
+        precios, dividendos, cfg_todo, costos,
+        nombre="Todo o nada (vende la posición entera)", impuestos=fisco,
     )
     resultados.append(todo_o_nada)
 
     # 4. Comprar y mantener, desde la misma fecha y con el mismo capital
     comprar_mantener = sim.simular_comprar_y_mantener(
-        precios, dividendos, args.acciones, costos, desde=inicio_comun
+        precios, dividendos, args.acciones, costos, desde=inicio_comun, impuestos=fisco
     )
     resultados.append(comprar_mantener)
 
@@ -131,6 +148,12 @@ def main() -> int:
         delta = r.valor_final - referencia
         marca = "" if r is comprar_mantener else f"  ({delta:+,.2f} vs comprar y mantener)"
         print(f" {r.nombre[:46]:<46} {moneda} {r.valor_final:>13,.2f}{marca}")
+    print()
+
+    liquidado = comprar_mantener.valor_si_liquidas_hoy(fisco.capital_gains_rate)
+    print(f" Comprar y mantener, LIQUIDANDO todo hoy y pagando el impuesto latente: "
+          f"{moneda} {liquidado:,.2f}")
+    print(f"   (es la comparación justa: quien mantiene tiene una deuda fiscal pendiente)")
     print()
 
     brecha = oraculo.valor_final - escalonada.valor_final
@@ -168,15 +191,15 @@ def _reporte(args, resultados, moneda, precios, dividendos) -> str:
         "",
         "## Resultados",
         "",
-        f"| Estrategia | Capital inicial | Valor final | Ganancia | % | Dividendos | Costos | Oper. |",
-        "|---|---|---|---|---|---|---|---|",
+        f"| Estrategia | Capital inicial | Valor final | Ganancia | % | Dividendos | Costos | Impuestos | Oper. |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     for r in resultados:
         out.append(
             f"| {r.nombre} | {r.capital_inicial:,.0f} | {r.valor_final:,.0f} | "
             f"**{r.ganancia:+,.0f}** | {r.retorno_pct * 100:+.1f}% | "
             f"{r.dividendos_cobrados:,.2f} | {r.costos_totales:,.2f} | "
-            f"{r.n_compras + r.n_ventas} |"
+            f"{r.impuestos_pagados:,.2f} | {r.n_compras + r.n_ventas} |"
         )
 
     brecha = oraculo.valor_final - escalonada.valor_final
