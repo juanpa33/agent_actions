@@ -30,7 +30,9 @@ from stockagent import news as nw  # noqa: E402
 from stockagent import pipeline as pl  # noqa: E402
 from stockagent import report as rp  # noqa: E402
 from stockagent import signals as sg  # noqa: E402
+from stockagent import compare as cmpx  # noqa: E402
 from stockagent import statistics as st  # noqa: E402
+from stockagent import strategies as strat  # noqa: E402
 from stockagent import universe as uv  # noqa: E402
 from stockagent.datasources import yahoo  # noqa: E402
 from stockagent.provenance import MissingDataError, dump_lineage  # noqa: E402
@@ -79,6 +81,11 @@ def main() -> int:
     parser.add_argument("--solo", default=None, help="Lista de tickers separados por coma")
     parser.add_argument("--sin-eventos", action="store_true")
     parser.add_argument("--sin-nasdaq-top", action="store_true")
+    parser.add_argument(
+        "--comparar",
+        action="store_true",
+        help="Comparar momentum vs reversión a la media vs comprar y mantener",
+    )
     parser.add_argument("--salida", default=str(ROOT / "reports" / "reporte.md"))
     args = parser.parse_args()
 
@@ -92,6 +99,7 @@ def main() -> int:
 
     global_warnings: list[str] = []
     analyses: list[pl.AssetAnalysis] = []
+    comparisons: list[str] = []
     lineage: dict = {}
 
     # --- Benchmark: necesario para el modelo de mercado del estudio de eventos ---
@@ -183,6 +191,25 @@ def main() -> int:
         print("No se pudo analizar ningún activo. Revisá la conectividad.", file=sys.stderr)
         return 1
 
+    # --- Comparación entre estrategias, si se pidió ---
+    if args.comparar:
+        print("\nComparando estrategias (momentum vs reversión vs comprar y mantener) ...")
+        catalogo = strat.StrategyCatalog(signal_config=pconf.signal_config)
+        for a in analyses:
+            close = a.prices.data["close"] if hasattr(a.prices.data, "columns") else a.prices.data
+            costos = cost_from(cfg, "byma") if a.ticker.endswith(".BA") else cost_from(cfg, "eeuu")
+            try:
+                comparacion = cmpx.compare_strategies(
+                    close.dropna(), a.display_name, catalog=catalogo,
+                    costs=costos, rebalance=pconf.rebalance,
+                )
+                comparisons.append(cmpx.render_comparison(comparacion))
+                mejor = comparacion.best_by_sharpe()
+                print(f"  {a.display_name}: mejor por Sharpe -> {mejor.name}")
+            except (ValueError, KeyError) as exc:
+                global_warnings.append(f"{a.ticker}: comparación no realizada — {exc}")
+                print(f"  {a.display_name}: falló la comparación — {exc}", file=sys.stderr)
+
     # --- PBO sobre el conjunto de estrategias evaluadas ---
     pbo = None
     if len(analyses) >= 2:
@@ -198,6 +225,9 @@ def main() -> int:
         analyses, universe=resolution, pbo=pbo,
         global_warnings=global_warnings, trials_evaluated=pconf.trials_evaluated,
     )
+
+    if comparisons:
+        markdown += "\n\n---\n\n" + "\n\n---\n\n".join(comparisons)
 
     out_path = Path(args.salida)
     out_path.parent.mkdir(parents=True, exist_ok=True)

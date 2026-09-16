@@ -229,6 +229,13 @@ def bootstrap_sharpe_ci(returns: pd.Series, n_boot: int = 2000, mean_block: floa
     if n < 30:
         return float("nan"), sharpe_ratio(returns), float("nan")
 
+    # Una estrategia que nunca abrió posición produce retornos constantemente
+    # cero: no tiene Sharpe ni intervalo de confianza. No es un error de
+    # cálculo, es que no operó, y corresponde devolverlo como "sin dato" en
+    # lugar de romper o de fabricar un número.
+    if r.std(ddof=1) == 0:
+        return float("nan"), float("nan"), float("nan")
+
     rng = np.random.default_rng(seed)
     samples = np.empty(n_boot)
     for b in range(n_boot):
@@ -239,6 +246,9 @@ def bootstrap_sharpe_ci(returns: pd.Series, n_boot: int = 2000, mean_block: floa
         )
 
     samples = samples[~np.isnan(samples)]
+    if len(samples) == 0:
+        return float("nan"), sharpe_ratio(returns), float("nan")
+
     alpha = (1.0 - confidence) / 2.0
     return (
         float(np.quantile(samples, alpha)),
@@ -259,6 +269,8 @@ def bootstrap_pvalue(returns: pd.Series, n_boot: int = 2000, mean_block: float =
     n = len(r)
     if n < 30:
         return float("nan")
+    if r.std(ddof=1) == 0:
+        return float("nan")  # la estrategia no operó: no hay hipótesis que contrastar
 
     observed = r.mean()
     centered = r - observed
