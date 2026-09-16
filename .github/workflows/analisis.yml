@@ -32,6 +32,16 @@ on:
         required: true
         default: true
         type: boolean
+      simular_dinero:
+        description: "Simular 100 acciones en dinero, con dividendos y ventas parciales"
+        required: true
+        default: true
+        type: boolean
+      acciones_a_simular:
+        description: "Cuántas acciones simular"
+        required: true
+        default: "100"
+        type: string
 
   # Para correrlo solo todos los viernes después del cierre de Wall Street,
   # borrá el "#" de las tres líneas de abajo:
@@ -94,6 +104,22 @@ jobs:
             ${{ steps.parametros.outputs.flags }} \
             2>&1 | tee reports/log_de_ejecucion.txt
 
+      - name: Simular la posición en dinero
+        id: simulacion
+        if: inputs.simular_dinero != false
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          for TICKER in NVDA YPFD.BA; do
+            echo "=== $TICKER ==="
+            python scripts/simular_acciones.py \
+              --ticker "$TICKER" \
+              --acciones "${{ inputs.acciones_a_simular || '100' }}" \
+              --anios "${{ steps.parametros.outputs.anios }}" \
+              --salida "reports/simulacion_${TICKER}.md" \
+              || echo "Falló la simulación de $TICKER (ver el error arriba)"
+          done 2>&1 | tee reports/log_simulacion.txt
+
       - name: Guardar el reporte
         uses: actions/upload-artifact@v4
         if: always()
@@ -126,6 +152,7 @@ jobs:
             echo "| Años de historia | ${{ inputs.anios || '2' }} |"
             echo "| Estudio de eventos | ${{ inputs.estudio_eventos }} |"
             echo "| Comparar estrategias | ${{ inputs.comparar_estrategias }} |"
+            echo "| Simulación en dinero | ${{ inputs.simular_dinero }} |"
             echo ""
             echo "> Esto no es asesoramiento financiero."
           } >> "$GITHUB_STEP_SUMMARY"
