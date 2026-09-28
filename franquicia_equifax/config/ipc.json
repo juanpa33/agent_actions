@@ -1,0 +1,11 @@
+{
+  "_fuente": "INDEC, IPC nacional, variación mensual %. 2024-11 a 2025-12 y 2026-08 son datos publicados (2025 cerró en 31,5% anual; agosto 2026 fue 1,7% con 21,3% acumulado en el año). Enero a julio 2026 son una ESTIMACIÓN uniforme (2,55% mensual) que reproduce el 21,3% acumulado publicado: reemplazalos por el dato real de cada mes. Septiembre 2026 aún no publicado: se asume igual a agosto.",
+  "base": "2026-09",
+  "mensual": {
+    "2024-11": 2.4, "2024-12": 2.7,
+    "2025-01": 2.2, "2025-02": 2.4, "2025-03": 3.7, "2025-04": 2.8, "2025-05": 1.5, "2025-06": 1.6,
+    "2025-07": 1.9, "2025-08": 1.9, "2025-09": 2.1, "2025-10": 2.3, "2025-11": 2.5, "2025-12": 2.8,
+    "2026-01": 2.55, "2026-02": 2.55, "2026-03": 2.55, "2026-04": 2.55, "2026-05": 2.55, "2026-06": 2.55,
+    "2026-07": 2.55, "2026-08": 1.7, "2026-09": 1.7
+  }
+}

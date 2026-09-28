@@ -1,0 +1,4 @@
+# Datos financieros privados de la sociedad: nunca se versionan (el repo es público).
+*.xlsx
+datos/
+salida/

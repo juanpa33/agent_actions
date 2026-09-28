@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero Virtus Cuyo</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f3f2ee;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #6f6d67;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --good: #006300; --bad: #d03b3b; --warn-bg: #fff4dc; --note-bg: #eef4fc;
+  --q1: #cde2fb; --q2: #9ec5f4; --q3: #6da7ec; --q4: #3987e5; --q5: #256abf; --q6: #184f95; --q7: #0d366b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #9a988f;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --good: #0ca30c; --bad: #e66767; --warn-bg: #3a2f12; --note-bg: #16263a;
+    --q1: #16263a; --q2: #104281; --q3: #184f95; --q4: #256abf; --q5: #3987e5; --q6: #6da7ec; --q7: #b7d3f6;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #9a988f;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --good: #0ca30c; --bad: #e66767; --warn-bg: #3a2f12; --note-bg: #16263a;
+  --q1: #16263a; --q2: #104281; --q3: #184f95; --q4: #256abf; --q5: #3987e5; --q6: #6da7ec; --q7: #b7d3f6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px 64px; }
+header.top { position: sticky; top: 0; z-index: 5; background: var(--page); border-bottom: 1px solid var(--grid); }
+header.top .wrap { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding-top: 10px; padding-bottom: 10px; }
+.brand { font-weight: 650; font-size: 16px; }
+.brand small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink-2); padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.btn { border: 1px solid var(--axis); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+nav.toc { display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 6px; }
+nav.toc a { font-size: 13px; color: var(--ink-2); text-decoration: none; border: 1px solid var(--grid); border-radius: 999px; padding: 3px 10px; background: var(--surface); }
+nav.toc a:hover { border-color: var(--axis); color: var(--ink); }
+h1 { font-size: 26px; line-height: 1.2; margin: 26px 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 20px; margin: 44px 0 4px; letter-spacing: -0.01em; }
+h3 { font-size: 15.5px; margin: 0 0 6px; }
+p.lead { color: var(--ink-2); margin: 0 0 14px; max-width: 78ch; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 16px; }
+.grid { display: grid; gap: 14px; }
+.kpis { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .kpis { grid-template-columns: 1fr; } }
+.kpi .lbl { font-size: 13px; color: var(--ink-2); }
+.kpi .val { font-size: 28px; font-weight: 650; margin: 2px 0; letter-spacing: -0.01em; }
+.kpi .sub { font-size: 12.5px; color: var(--muted); }
+.kpi details { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+.kpi summary { cursor: pointer; color: var(--s1); font-size: 12.5px; }
+.two { grid-template-columns: 1.4fr 1fr; }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-2); margin: 4px 0 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.explica { background: var(--note-bg); border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--ink); margin-top: 12px; }
+.explica b { font-weight: 650; }
+.aviso { background: var(--warn-bg); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; margin-top: 10px; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: s; position: relative; padding: 6px 0 8px 34px; border-bottom: 1px dashed var(--grid); font-size: 14px; }
+.steps li:last-child { border-bottom: 0; }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 7px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--ink); color: var(--page); font-size: 12px; font-weight: 650; display: grid; place-items: center; }
+select { font: inherit; font-size: 14px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--axis); background: var(--surface); color: var(--ink); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
+.scroll { overflow-x: auto; }
+.heat td.c { color: var(--ink); min-width: 52px; }
+.heat td.c.dk { color: #fff; }
+.heat td.c.lt { color: #0b0b0b; }
+.pill { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--axis); color: var(--ink-2); margin-right: 4px; }
+.pill.alta { border-color: var(--bad); color: var(--bad); }
+.ideas { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.idea .imp { font-size: 13px; color: var(--good); font-weight: 600; margin-top: 8px; }
+.idea p, .concl p { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
+.concl { counter-reset: c; display: grid; gap: 12px; }
+.concl .card { position: relative; padding-left: 52px; }
+.concl .card::before { counter-increment: c; content: counter(c); position: absolute; left: 16px; top: 16px; font-size: 20px; font-weight: 700; color: var(--s1); }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--surface); color: var(--ink); border: 1px solid var(--axis);
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.12); max-width: 300px; display: none; }
+.tip b { font-weight: 650; }
+.tip .r { display: flex; justify-content: space-between; gap: 14px; }
+.tip .r span:last-child { font-variant-numeric: tabular-nums; }
+.axis text, .lbl-sm { font-size: 11px; fill: var(--muted); }
+.dl { font-size: 11.5px; fill: var(--ink-2); }
+.dl-strong { font-size: 12px; fill: var(--ink); font-weight: 600; }
+.split { display: flex; height: 34px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 8px 0 4px; }
+.split div { white-space: nowrap; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; }
+.split-leg { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; font-size: 13px; }
+.muted { color: var(--muted); }
+footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); }
+a { color: var(--s1); }
+dl.glos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14px; margin: 0; }
+dl.glos dt { font-weight: 600; }
+dl.glos dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 600px) { dl.glos { grid-template-columns: 1fr; } dl.glos dd { margin-bottom: 8px; } .kpi .val { font-size: 24px; } }
+@media (max-width: 600px) { header.top { position: static; } }
+@media print { header.top { position: static; } .controls { display: none; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand">Virtus · Franquicia Equifax Cuyo<small id="rango"></small></div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Unidad de los montos">
+      <button id="bNom" aria-pressed="true">Pesos de cada mes</button>
+      <button id="bReal" aria-pressed="false">Pesos de hoy</button>
+    </div>
+    <button class="btn" id="bTema" title="Cambiar tema claro/oscuro">◐ Tema</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <h1>Tablero de control del negocio</h1>
+  <p class="lead">Cada mes Equifax transfiere a Virtus la comisión por lo que se vendió en Cuyo. De ahí se pagan los gastos, se aparta un fondo de resguardo
+  y el resto se reparte entre los cuatro socios según su porcentaje. Este tablero toma el Excel de liquidaciones, lo ordena y lo explica paso a paso.
+  <span class="muted" id="unidadNota"></span></p>
+  <nav class="toc">
+    <a href="#resumen">Resumen</a><a href="#mes">Un mes paso a paso</a><a href="#evolucion">Evolución</a>
+    <a href="#apalancamiento">Punto de equilibrio</a><a href="#costos">Costos</a><a href="#socios">Socios</a>
+    <a href="#conclusiones">Conclusiones</a><a href="#ideas">Ideas de optimización</a><a href="#benchmark">Comparación</a><a href="#datos">Datos y glosario</a>
+  </nav>
+
+  <section id="resumen">
+    <h2>1. Resumen</h2>
+    <p class="lead" id="resumenLead"></p>
+    <div class="grid kpis" id="kpis"></div>
+  </section>
+
+  <section id="mes">
+    <h2>2. Un mes, paso a paso</h2>
+    <p class="lead">Elegí un mes para ver cómo la comisión de Equifax se convierte en la transferencia a cada socio. Cada escalón de la cascada es un descuento.</p>
+    <div class="card">
+      <label>Mes de liquidación: <select id="selMes"></select></label>
+      <div class="grid two" style="margin-top:12px">
+        <div><div class="chart" id="cascada"></div></div>
+        <div><ol class="steps" id="pasos"></ol></div>
+      </div>
+      <h3 style="margin-top:14px">Cómo se repartió entre los socios</h3>
+      <div class="split" id="split"></div>
+      <div class="split-leg" id="splitLeg"></div>
+      <details style="margin-top:12px"><summary>Ver todos los gastos de este mes</summary><div class="scroll"><table id="tablaMes"></table></div></details>
+      <div id="notaMes"></div>
+    </div>
+  </section>
+
+  <section id="evolucion">
+    <h2>3. Evolución mensual: ¿adónde fue cada peso?</h2>
+    <p class="lead">Cada barra es todo lo que hubo disponible en el mes, dividido en tres partes: lo que se llevaron los gastos, lo que se guardó y lo que se repartió.</p>
+    <div class="card">
+      <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Repartido a socios</span><span><i class="sw" style="background:var(--s3)"></i>Fondo de resguardo</span><span><i class="sw" style="background:var(--s2)"></i>Gastos e impuestos</span></div>
+      <div class="chart" id="evol"></div>
+      <div class="explica" id="evolExplica"></div>
+    </div>
+  </section>
+
+  <section id="apalancamiento">
+    <h2>4. Punto de equilibrio y apalancamiento operativo</h2>
+    <p class="lead">Si la comisión se duplica, los gastos casi no cambian. Por eso, en los meses buenos los gastos son una porción chica del ingreso y en los malos se comen casi todo.</p>
+    <div class="grid two">
+      <div class="card">
+        <h3>Gastos como % de lo cobrado, según el tamaño del mes</h3>
+        <div class="chart" id="scatter"></div>
+      </div>
+      <div class="card">
+        <h3>Cómo leerlo</h3>
+        <div id="eqTexto" style="font-size:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="costos">
+    <h2>5. Estructura de costos</h2>
+    <p class="lead" id="costosLead"></p>
+    <div class="grid two">
+      <div class="card"><h3>Ranking de rubros (últimos 12 meses)</h3><p class="muted" style="margin:0 0 8px;font-size:13px">Monto acumulado · % de lo cobrado de Equifax</p><div class="chart" id="ranking"></div></div>
+      <div class="card"><h3>Qué entra en cada rubro</h3><div id="rubrosDef" style="font-size:13.5px"></div></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>Mapa de calor: gasto por rubro y por mes</h3>
+      <p class="muted" style="margin:0 0 8px;font-size:13px">Más oscuro = más gasto. Pasá el mouse por una celda para ver el detalle.</p>
+      <div class="scroll"><table class="heat" id="heat"></table></div>
+    </div>
+  </section>
+
+  <section id="socios">
+    <h2>6. Socios</h2>
+    <p class="lead">El porcentaje de cada socio cambió dos veces. Además del reparto, algunos meses se suman <i>gastos reintegrables</i>, que devuelven lo que un socio pagó de su bolsillo por el negocio.</p>
+    <div class="grid two">
+      <div class="card">
+        <h3>Reparto mensual por socio</h3>
+        <div class="legend" id="legSocios"></div>
+        <div class="chart" id="lineSocios"></div>
+      </div>
+      <div class="card">
+        <h3>Acumulado recibido</h3>
+        <div class="chart" id="acumSocios"></div>
+        <h3 style="margin-top:14px">Porcentajes de reparto</h3>
+        <div class="scroll"><table id="tablaShares"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="conclusiones">
+    <h2>7. Conclusiones de negocio</h2>
+    <p class="lead">Lo que dicen los números, comparado con negocios parecidos: franquicias de servicios, agencias que venden a comisión y distribuidores B2B.</p>
+    <div class="concl" id="concl"></div>
+  </section>
+
+  <section id="ideas">
+    <h2>8. Ideas de optimización</h2>
+    <p class="lead">Ordenadas por prioridad. El ahorro estimado sale de los datos de los últimos 12 meses y es una referencia para priorizar, no una promesa.</p>
+    <div class="grid ideas" id="ideasGrid"></div>
+  </section>
+
+  <section id="benchmark">
+    <h2>9. Comparación con negocios parecidos</h2>
+    <div class="card scroll"><table id="bench"></table></div>
+    <p class="muted" style="font-size:12.5px">Los valores de referencia son rangos publicados para Argentina y para ventas B2B en general. No existen datos públicos de otras franquicias de Equifax: Equifax no publica sus comisiones.</p>
+  </section>
+
+  <section id="datos">
+    <h2>10. Datos, supuestos y glosario</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Cómo se armaron los datos</h3>
+        <ul style="font-size:14px;color:var(--ink-2);padding-left:18px;margin:0" id="supuestos"></ul>
+      </div>
+      <div class="card">
+        <h3>Glosario</h3>
+        <dl class="glos">
+          <dt>Liquidación</dt><dd>El cálculo mensual: lo que entró, lo que se pagó y lo que se repartió. Cada hoja del Excel es una.</dd>
+          <dt>Mes de liquidación</dt><dd>El mes en que se hizo el reparto. Las ventas corresponden, en general, al mes anterior.</dd>
+          <dt>Imp. al cheque</dt><dd>Impuesto a los créditos y débitos bancarios: 0,6% de cada peso que entra y 0,6% de cada peso que sale de la cuenta.</dd>
+          <dt>SICREB</dt><dd>Sistema de recaudación de Ingresos Brutos sobre acreditaciones bancarias.</dd>
+          <dt>VEP</dt><dd>Volante electrónico de pago: la forma de pagar impuestos a ARCA (ex AFIP).</dd>
+          <dt>Fondo de resguardo</dt><dd>Plata que no se reparte y queda para imprevistos o meses flojos.</dd>
+          <dt>Pesos de hoy</dt><dd>Montos ajustados por inflación (IPC INDEC) para comparar meses distintos en la misma moneda.</dd>
+          <dt>Punto de equilibrio</dt><dd>La comisión mínima para cubrir todos los gastos. Por debajo, no queda nada para repartir.</dd>
+          <dt>Apalancamiento operativo</dt><dd>Cuando casi todos los costos son fijos, cada peso extra de ingreso llega casi entero a la ganancia, y cada peso que falta la reduce igual.</dd>
+          <dt>Coef. de variación</dt><dd>Cuánto se alejan los meses del promedio, en %. Arriba de 30% se considera un ingreso muy variable.</dd>
+        </dl>
+      </div>
+    </div>
+    <details class="card" style="margin-top:14px"><summary><b>Tabla completa por mes</b> (los mismos datos de los gráficos)</summary><div class="scroll"><table id="tablaTodo"></table></div></details>
+    <div class="card" style="margin-top:14px">
+      <h3>Fuentes consultadas</h3>
+      <ul style="font-size:13.5px;padding-left:18px;margin:0">
+        <li><a href="https://www.soluciones.equifax.com.ar/acerca-de-nosotros/franquicias/">Equifax Argentina: sistema de franquicias</a> e <a href="https://infofast.com.ar/about_us.html">Infofast (franquicia NOA)</a>: el país dividido en 7 franquicias más una red de distribuidores.</li>
+        <li><a href="https://www.afip.gob.ar/creditosyDebitos/casos-especiales/computo-para-microempresas.asp">ARCA: cómputo del impuesto al cheque para micro y pequeñas empresas</a> y <a href="https://www.argentina.gob.ar/produccion/registrar-una-pyme/beneficios">Beneficios PyME</a>.</li>
+        <li><a href="https://fortunaweb.com.ar/blog/impuesto-al-debito-y-al-credito-como-funciona-quienes-pagan-y-exenciones">Exenciones del impuesto al cheque (FCI, cuentas del mismo titular)</a> e <a href="https://www.infobae.com/economia/2026/09/15/como-funcionara-la-nueva-norma-de-la-cnv-que-freno-un-circuito-para-las-pymes-que-reducia-el-impuesto-al-cheque/">Infobae: nueva norma CNV (sep-2026)</a>.</li>
+        <li><a href="https://www.forbesargentina.com/negocios/paradoja-sector-franquicias-aperturas-crecen-mientras-actividad-cae-margenes-ajustan-n98348">Forbes Argentina: márgenes de franquicias</a>, <a href="https://www.shopify.com/es/blog/franquicias-rentables-argentina">Shopify: franquicias rentables en Argentina 2026</a> y <a href="https://mbe.ar/franquicias-de-servicios-en-argentina-guia-para-elegir-modelo-solido/">MBE: franquicias de servicios</a>.</li>
+        <li><a href="https://www.crehana.com/es/blog/empresas/comisiones-de-venta-b2b/">Crehana: comisiones B2B (mezcla 60/40 fijo/variable)</a> y <a href="https://www.remuner.com/es/blog/8-tipos-estructuras-de-comisiones-de-ventas/">Remuner: estructuras de comisiones</a>.</li>
+        <li><a href="https://www.losandes.com.ar/economia/la-mendoza-de-las-12-empresas-cada-1000-habitantes-como-mejorar-la-economia-para-generar-empleo-privado">Los Andes: densidad empresarial de Mendoza</a>.</li>
+        <li><a href="https://www.cronista.com/economia-politica/inflacion-de-agosto-2026-de-cuanto-fue-el-ipc-del-mes-pasado-segun-el-indec/">El Cronista: IPC agosto 2026</a> e <a href="https://www.infobae.com/economia/2026/01/14/cual-fue-la-inflacion-de-2025-medida-con-el-nuevo-indice-de-precios-que-el-indec-aplicara-a-partir-de-enero/">Infobae: inflación 2025</a>.</li>
+      </ul>
+    </div>
+  </section>
+  <footer>Generado localmente a partir del Excel de liquidaciones. No reemplaza el asesoramiento contable ni impositivo. Datos privados de la sociedad: no publicar.</footer>
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+const D = /*__DATA__*/null;
+const S = { real: false };
+try { const t = localStorage.getItem('virtus-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+// ---------- utilidades ----------
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const COL = { JPM: 'var(--s1)', GF: 'var(--s2)', MG: 'var(--s3)', MC: 'var(--s4)' };
+const NOMBRE = { JPM: 'JPM', GF: 'GF', MG: 'MG', MC: 'MC' };
+const fM = x => x === 0 ? '0' : Math.abs(x) < 95000 ? Math.round(x / 1000).toLocaleString('es-AR') + ' mil' : (x / 1e6).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M';
+const f$ = x => '$ ' + Math.round(x).toLocaleString('es-AR');
+const fP = (x, d = 0) => (x * 100).toLocaleString('es-AR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%';
+const V = (m, x) => x * (S.real ? m.factor_real : 1);
+const conDetalle = D.meses.filter(m => m.ingreso);
+const CORTO = { 'Cobrado de Equifax': 'Cobrado', 'Saldo que quedó en cuenta': 'Saldo anterior', 'Promoción y merchandising': 'Promoción',
+  'Bancos e imp. al cheque': 'Bancos', 'Oficina y alquiler': 'Oficina', 'Tarjeta de crédito': 'Tarjeta', 'Reintegros y viajes': 'Reintegros',
+  'Equipo comercial': 'Comercial', 'Fondo de resguardo': 'Resguardo', 'Repartido a socios': 'A socios', 'Otros / extraordinarios': 'Otros' };
+const ultimo = conDetalle[conDetalle.length - 1];
+
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function text(parent, x, y, s, cls = 'lbl-sm', anchor = 'start') {
+  const t = el('text', { x, y, class: cls, 'text-anchor': anchor }, parent); t.textContent = s; return t;
+}
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  return ([1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(s => n <= s)) * p;
+}
+function svgFor(id, h) {
+  const box = document.getElementById(id); box.innerHTML = '';
+  const w = Math.max(300, box.clientWidth || 600);
+  const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, role: 'img' }, box);
+  return { svg, w, h };
+}
+// Rectángulo con extremo redondeado (4px) solo arriba, anclado a la base.
+function barPath(x, y, w, h, r = 4) {
+  if (h <= 0) return '';
+  r = Math.min(r, w / 2, h);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function yAxis(svg, x0, x1, y0, y1, max, fmt = fM, ticks = 4) {
+  const g = el('g', { class: 'axis' }, svg);
+  for (let i = 0; i <= ticks; i++) {
+    const v = max * i / ticks, y = y0 - (y0 - y1) * i / ticks;
+    el('line', { x1: x0, x2: x1, y1: y, y2: y, stroke: i ? 'var(--grid)' : 'var(--axis)', 'stroke-width': 1 }, g);
+    text(g, x0 - 6, y + 4, fmt(v), 'lbl-sm', 'end');
+  }
+}
+// Tooltip compartido
+const tip = $('#tip');
+function showTip(ev, html) {
+  tip.innerHTML = html; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+const row = (k, v, c) => `<div class="r"><span>${c ? `<i class="sw" style="background:${c};width:9px;height:9px"></i> ` : ''}${k}</span><span>${v}</span></div>`;
+
+// ---------- 1. KPIs ----------
+function renderKpis() {
+  const a = D.analisis, t12 = a.tot12;
+  const sum = k => conDetalle.slice(-12).reduce((s, m) => s + V(m, m[k]), 0);
+  const ing12 = sum('ingreso'), gas12 = sum('total_gastos'), soc12 = sum('neto_socios');
+  $('#rango').textContent = `Liquidaciones ${D.meses[0].etiqueta} a ${ultimo.etiqueta} · ${conDetalle.length} meses con detalle`;
+  $('#resumenLead').innerHTML = `Últimos 12 meses (${a.l12_desde} a ${a.l12_hasta}). Los montos están en ${S.real ? `<b>pesos de ${D.ipcBase}</b>, ajustados por inflación` : '<b>pesos de cada mes</b>, sin ajustar'}.`;
+  const kpis = [
+    ['Cobrado de Equifax', fM(ing12), `promedio ${fM(ing12 / 12)} por mes`, 'Es la comisión que Equifax transfirió al banco de Virtus por las ventas de la región. No incluye el saldo que quedaba del mes anterior.'],
+    ['Gastos e impuestos', fM(gas12), `${fP(gas12 / ing12)} de lo cobrado`, 'Todo lo que se pagó antes de repartir: equipo comercial, call center, contadora, alquiler, tarjeta, impuestos, bancos, promoción y reintegros.'],
+    ['Repartido a socios', fM(soc12), `${fP(soc12 / ing12)} de lo cobrado`, 'La suma de las transferencias “base proporcional” a los cuatro socios. No incluye los reintegros de gastos.'],
+    ['Punto de equilibrio', fM(a.equilibrio) + ' /mes', `estructura fija actual ${fM(a.fijos_ult)}`, `Si Equifax paga menos que esto en un mes, no queda nada para repartir. Se calcula como costos fijos ÷ (1 − ${fP(a.tasa_var, 1)} de impuestos y bancos). Está en pesos de ${ultimo.etiqueta}.`],
+    ['Crecimiento real', (a.crec_real >= 0 ? '+' : '') + fP(a.crec_real), 'primer semestre vs último, sin inflación', `Compara el cobro promedio de los 6 primeros meses con los 6 últimos, en pesos de ${D.ipcBase}. Mide si el negocio crece de verdad o solo por la inflación.`],
+    ['Variabilidad', fP(a.cv12), 'coeficiente de variación, 12 meses', 'Cuánto se aleja un mes típico del promedio. Arriba de 30% es un ingreso muy variable, y eso obliga a tener un fondo de resguardo.'],
+  ];
+  $('#kpis').innerHTML = kpis.map(([l, v, s, e]) => `<div class="card kpi"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div><details><summary>¿Qué significa?</summary>${e}</details></div>`).join('');
+}
+
+// ---------- 2. Un mes ----------
+function renderMesSelect() {
+  const sel = $('#selMes');
+  sel.innerHTML = conDetalle.map(m => `<option value="${m.mes}">${m.etiqueta}${m.venta ? ` (ventas ${D.meses.find(x => x.mes === m.venta)?.etiqueta || m.venta})` : ''}</option>`).reverse().join('');
+  sel.onchange = () => renderMes();
+}
+function renderMes() {
+  const m = D.meses.find(x => x.mes === $('#selMes').value) || ultimo;
+  const rub = Object.entries(m.rubros).sort((a, b) => b[1] - a[1]);
+  const steps = [{ k: 'Cobrado de Equifax', v: m.ingreso, tipo: 'tot' }];
+  if (m.saldo_anterior > 50000) steps.push({ k: 'Saldo que quedó en cuenta', v: m.saldo_anterior, tipo: 'mas' });
+  rub.forEach(([k, v]) => steps.push({ k, v: -v, tipo: 'menos' }));
+  if (m.resguardo) steps.push({ k: 'Fondo de resguardo', v: -m.resguardo, tipo: 'res' });
+  steps.push({ k: 'Repartido a socios', v: m.neto_socios, tipo: 'fin' });
+
+  const rowH = 26, top = 6, h = steps.length * rowH + top + 22;
+  const { svg, w } = svgFor('cascada', h);
+  const lx = Math.min(190, w * 0.36), x0 = lx + 6, x1 = w - 64;
+  const corto = k => w < 520 ? (CORTO[k] || k) : k;
+  const max = V(m, m.disponible);
+  const sx = v => x0 + (x1 - x0) * v / max;
+  let acc = 0;
+  steps.forEach((s, i) => {
+    const y = top + i * rowH, val = V(m, s.v);
+    let a, b;
+    if (s.tipo === 'tot') { a = 0; b = val; acc = val; }
+    else if (s.tipo === 'mas') { a = acc; b = acc + val; acc = b; }
+    else if (s.tipo === 'fin') { a = 0; b = val; }
+    else { a = acc + val; b = acc; acc = a; }
+    const fill = s.tipo === 'fin' || s.tipo === 'tot' || s.tipo === 'mas' ? 'var(--s1)' : s.tipo === 'res' ? 'var(--s3)' : 'var(--s2)';
+    const rx = sx(Math.min(a, b)), rw = Math.max(1.5, Math.abs(sx(b) - sx(a)));
+    const r = el('rect', { x: rx, y: y + 4, width: rw, height: rowH - 8, rx: 3, fill }, svg);
+    if (i < steps.length - 1 && s.tipo !== 'fin') el('line', { x1: sx(acc), x2: sx(acc), y1: y + rowH - 4, y2: y + rowH + 4, stroke: 'var(--axis)' }, svg);
+    text(svg, lx, y + rowH / 2 + 4, corto(s.k), s.tipo === 'fin' || s.tipo === 'tot' ? 'dl-strong' : 'dl', 'end');
+    text(svg, Math.max(rx + rw, sx(acc)) + 6, y + rowH / 2 + 4, (s.v < 0 ? '−' : '') + fM(Math.abs(val)), 'dl');
+    const hit = el('rect', { x: 0, y, width: w, height: rowH, fill: 'transparent' }, svg);
+    hit.addEventListener('mousemove', ev => {
+      const det = (m.gastos || []).filter(g => g.rubro === s.k).map(g => row(g.concepto, fM(V(m, g.monto)))).join('');
+      showTip(ev, `<b>${s.k}</b>${row('Monto', fM(Math.abs(val)))}${row('% de lo cobrado', fP(Math.abs(s.v) / m.ingreso, 1))}${det ? '<hr style="border:0;border-top:1px solid var(--grid)">' + det : ''}`);
+    });
+    hit.addEventListener('mouseleave', hideTip);
+  });
+
+  const g = m.total_gastos, top3 = rub.slice(0, 3).map(([k, v]) => `${k.toLowerCase()} (${fM(V(m, v))})`).join(', ');
+  const ventas = D.meses.find(x => x.mes === m.venta)?.etiqueta || m.venta;
+  $('#pasos').innerHTML = [
+    `<b>Entra la comisión.</b> Equifax transfirió <b>${fM(V(m, m.ingreso))}</b>${ventas ? ` por las ventas de ${ventas}` : ''}.${m.saldo_anterior > 50000 ? ` Además había <b>${fM(V(m, m.saldo_anterior))}</b> del mes anterior.` : ''}`,
+    `<b>Se pagan los gastos.</b> Salieron <b>${fM(V(m, g))}</b>, el ${fP(g / m.ingreso)} de lo cobrado. Los más grandes: ${top3}.`,
+    `<b>Se guarda un resguardo.</b> ${m.resguardo ? `Quedaron <b>${fM(V(m, m.resguardo))}</b> en la cuenta para imprevistos.` : 'Este mes no se apartó fondo de resguardo.'}`,
+    `<b>Se reparte.</b> A los socios les tocaron <b>${fM(V(m, m.neto_socios))}</b>, el ${fP(m.neto_socios / m.ingreso)} de lo cobrado, según los porcentajes ${D.socios.map(s => `${s} ${fP(m.shares[s] || 0)}`).join(' · ')}.`,
+  ].map(s => `<li>${s}</li>`).join('');
+
+  $('#split').innerHTML = D.socios.map(s => `<div style="flex:${m.shares[s] || 0.0001};background:${COL[s]}" title="${s}">${s} ${fP(m.shares[s] || 0)}</div>`).join('');
+  $('#splitLeg').innerHTML = D.socios.map(s => {
+    const re = m.reintegros[s] || 0;
+    return `<div><i class="sw" style="background:${COL[s]}"></i> <b>${s}</b>: ${fM(V(m, m.reparto[s] || 0))}${re ? `<br><span class="muted">+ ${fM(V(m, re))} de reintegros</span>` : ''}</div>`;
+  }).join('');
+  $('#tablaMes').innerHTML = '<tr><th>Concepto (como figura en el Excel)</th><th>Rubro</th><th>Monto</th><th>% cobrado</th></tr>' +
+    m.gastos.slice().sort((a, b) => b.monto - a.monto).map(x => `<tr><td>${x.concepto}</td><td>${x.rubro}</td><td>${f$(V(m, x.monto))}</td><td>${fP(x.monto / m.ingreso, 1)}</td></tr>`).join('');
+  const notas = [m.nota, m.diferidos ? `Se postergaron ${fM(m.diferidos)} de gastos para la liquidación siguiente.` : ''].filter(Boolean);
+  $('#notaMes').innerHTML = notas.length ? `<div class="aviso">⚠ ${notas.join(' ')}</div>` : '';
+}
+
+// ---------- 3. Evolución ----------
+function renderEvol() {
+  const ms = D.meses, h = 300, { svg, w } = svgFor('evol', h);
+  const L = 58, R = 8, T = 16, B = 40, pw = w - L - R, ph = h - T - B;
+  const tot = m => V(m, (m.total_gastos || 0) + (m.resguardo || 0) + (m.neto_socios || 0));
+  const max = niceMax(Math.max(...ms.map(tot)));
+  yAxis(svg, L, w - R, T + ph, T, max);
+  const bw = pw / ms.length, gap = Math.max(2, bw * 0.22);
+  const sy = v => ph * v / max;
+  ms.forEach((m, i) => {
+    const x = L + i * bw + gap / 2, bwi = bw - gap;
+    let y = T + ph;
+    const segs = [['Gastos e impuestos', m.total_gastos || 0, 'var(--s2)'], ['Fondo de resguardo', m.resguardo || 0, 'var(--s3)'], ['Repartido a socios', m.neto_socios, 'var(--s1)']];
+    const vis = segs.filter(s => s[1] > 0);
+    vis.forEach(([k, v, c], j) => {
+      const hh = sy(V(m, v));
+      y -= hh;
+      const isTop = j === vis.length - 1;
+      el('path', { d: isTop ? barPath(x, y, bwi, hh - (j ? 2 : 0)) : `M${x},${y}h${bwi}v${Math.max(0, hh - (j ? 2 : 0))}h${-bwi}Z`, fill: c }, svg);
+    });
+    if ((ms.length - 1 - i) % Math.ceil(ms.length / Math.floor(pw / 48)) === 0) text(svg, x + bwi / 2, h - B + 16, m.etiqueta, 'lbl-sm', 'middle');
+    const hit = el('rect', { x: L + i * bw, y: T, width: bw, height: ph, fill: 'transparent' }, svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${m.etiqueta}</b>${m.solo_reparto ? '<div class="muted">Solo se registró el reparto</div>' : ''}${m.ingreso ? row('Cobrado de Equifax', fM(V(m, m.ingreso))) : ''}${row('Gastos e impuestos', fM(V(m, m.total_gastos || 0)), 'var(--s2)')}${row('Resguardo', fM(V(m, m.resguardo || 0)), 'var(--s3)')}${row('Socios', fM(V(m, m.neto_socios)), 'var(--s1)')}${m.pct_gastos ? row('Gastos / cobrado', fP(m.pct_gastos)) : ''}`));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+  // etiqueta directa en el máximo
+  const iMax = ms.reduce((b, m, i) => tot(m) > tot(ms[b]) ? i : b, 0);
+  text(svg, L + iMax * bw + bw / 2, T + ph - sy(tot(ms[iMax])) - 5, fM(tot(ms[iMax])), 'dl-strong', 'middle');
+  const a = D.analisis;
+  $('#evolExplica').innerHTML = `<b>Qué mirar:</b> la parte naranja (gastos) es parecida todos los meses, mientras que la azul (socios) sube y baja con la comisión. ` +
+    `El pico de ${ms[iMax].etiqueta} fue excepcional. Si se repite, conviene entender por qué: ¿un cliente grande, una campaña, un cambio de comisión? ` +
+    `Probá el botón <i>Pesos de hoy</i>: sin la inflación, los meses de 2025 se ven más grandes que en pesos de cada mes.`;
+}
+
+// ---------- 4. Apalancamiento ----------
+function renderScatter() {
+  const h = 290, { svg, w } = svgFor('scatter', h);
+  const L = 44, R = 12, T = 12, B = 38, pw = w - L - R, ph = h - T - B;
+  const pts = conDetalle.map(m => ({ m, x: V(m, m.ingreso), y: m.pct_gastos }));
+  const xmax = niceMax(Math.max(...pts.map(p => p.x))), ymax = 0.8;
+  const sx = v => L + pw * v / xmax, sy = v => T + ph - ph * Math.min(v, ymax) / ymax;
+  for (let i = 0; i <= 4; i++) {
+    const y = T + ph - ph * i / 4;
+    el('line', { x1: L, x2: w - R, y1: y, y2: y, stroke: i ? 'var(--grid)' : 'var(--axis)' }, svg);
+    text(svg, L - 6, y + 4, fP(ymax * i / 4), 'lbl-sm', 'end');
+    text(svg, L + pw * i / 4, h - B + 16, fM(xmax * i / 4), 'lbl-sm', i === 0 ? 'start' : i === 4 ? 'end' : 'middle');
+  }
+  text(svg, L + pw / 2, h - 4, 'Cobrado en el mes →', 'lbl-sm', 'middle');
+  // Curva teórica: gastos = fijos + tasa_var * ingreso (fijos en pesos del último mes)
+  const a = D.analisis, fij = S.real ? a.fijos_ult * ultimo.factor_real : a.fijos_ult;
+  let d = '';
+  for (let i = 1; i <= 60; i++) {
+    const x = xmax * i / 60, y = fij / x + a.tasa_var;
+    if (y > ymax) continue;
+    d += (d ? 'L' : 'M') + sx(x) + ',' + sy(y);
+  }
+  el('path', { d, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.5, 'stroke-dasharray': '4 4' }, svg);
+  const eq = S.real ? a.equilibrio * ultimo.factor_real : a.equilibrio;
+  if (eq < xmax) {
+    el('line', { x1: sx(eq), x2: sx(eq), y1: T, y2: T + ph, stroke: 'var(--bad)', 'stroke-width': 1 }, svg);
+    text(svg, sx(eq) + 4, T + ph - 6, `equilibrio ${fM(eq)}`, 'lbl-sm');
+  }
+  pts.forEach(p => {
+    const c = el('circle', { cx: sx(p.x), cy: sy(p.y), r: 5, fill: 'var(--s1)', stroke: 'var(--surface)', 'stroke-width': 2 }, svg);
+    const hit = el('circle', { cx: sx(p.x), cy: sy(p.y), r: 12, fill: 'transparent' }, svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${p.m.etiqueta}</b>${row('Cobrado', fM(p.x))}${row('Gastos', fM(V(p.m, p.m.total_gastos)))}${row('Gastos / cobrado', fP(p.y))}`));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+  const hi = pts.reduce((b, p) => p.x > b.x ? p : b), lo = pts.reduce((b, p) => p.y > b.y ? p : b);
+  [hi, lo].forEach(p => text(svg, sx(p.x) + (p === hi ? -8 : 8), sy(p.y) - 9, p.m.etiqueta, 'dl', p === hi ? 'end' : 'start'));
+  $('#eqTexto').innerHTML = `<p>Cada punto es un mes. A la derecha están los meses en que Equifax pagó más, y arriba los meses en que los gastos se llevaron una porción mayor.</p>
+  <p>La línea punteada es la <b>regla del negocio</b>: con la estructura actual (${fM(fij)} fijos por mes, más ${fP(a.tasa_var, 1)} de impuestos y bancos), el porcentaje de gastos baja a medida que el mes es más grande.</p>
+  <p>La línea roja es el <b>punto de equilibrio</b> (${fM(eq)}). Los meses cerca de esa línea son los que ponen en riesgo el reparto.</p>
+  <div class="explica"><b>Lección:</b> en un negocio de comisión con costos fijos, conviene <b>(1)</b> que parte de los costos acompañe al ingreso (variables) y <b>(2)</b> tener un fondo para los meses de la izquierda.</div>`;
+}
+
+// ---------- 5. Costos ----------
+const DEF_RUBROS = {
+  'Equipo comercial': 'Sueldo fijo y variable de la comercial, comercial FG, cierres comerciales, aguinaldo, sindicato y otras personas.',
+  'Call center': 'Servicio fijo de 1 M por mes (se transfiere a un socio junto con su parte) y llamadas puntuales.',
+  'Impuestos': 'IVA, Ganancias, VEP, IIBB, sellos, percepciones e “impuestos varios”.',
+  'Tarjeta de crédito': 'Pago del resumen de la tarjeta de la empresa. El Excel no muestra el detalle.',
+  'Oficina y alquiler': 'Alquiler de la oficina (incluye atrasados) y teléfono corporativo.',
+  'Contadora': 'Honorarios mensuales del estudio contable.',
+  'Reintegros y viajes': 'Gastos que pagaron socios o empleados de su bolsillo y se devuelven, y viajes.',
+  'Bancos e imp. al cheque': 'Impuesto a los créditos y débitos (0,6% + 0,6%), SICREB y mantenimiento de cuenta.',
+  'Promoción y merchandising': '“Altas amigas” (premios por referidos), sponsor de eventos, stickers, regalos, tarjetas personales e impresiones.',
+  'Otros / extraordinarios': 'Partidas sin detalle suficiente para clasificarlas.',
+  'Fee Equifax': 'Cargo fijo que cobra Equifax a Virtus.',
+};
+function renderCostos() {
+  const l12 = conDetalle.slice(-12);
+  const tot = {}; l12.forEach(m => Object.entries(m.rubros).forEach(([k, v]) => tot[k] = (tot[k] || 0) + V(m, v)));
+  const items = Object.entries(tot).sort((a, b) => b[1] - a[1]);
+  const all = items.reduce((s, x) => s + x[1], 0), ing = l12.reduce((s, m) => s + V(m, m.ingreso), 0);
+  $('#costosLead').innerHTML = `En 12 meses la estructura costó <b>${fM(all)}</b>. Los tres rubros más grandes (${items.slice(0, 3).map(x => x[0].toLowerCase()).join(', ')}) suman el <b>${fP(items.slice(0, 3).reduce((s, x) => s + x[1], 0) / all)}</b> del gasto.`;
+  const rowH = 26, h = items.length * rowH + 6, { svg, w } = svgFor('ranking', h);
+  const lx = Math.min(170, w * 0.36), x0 = lx + 8, x1 = w - 96, max = items[0][1];
+  const corto = k => w < 520 ? (CORTO[k] || k) : k;
+  items.forEach(([k, v], i) => {
+    const y = i * rowH + 3, bw = (x1 - x0) * v / max;
+    el('path', { d: `M${x0},${y + 4}h${bw - 4}q4,0 4,4v${rowH - 16}q0,4 -4,4h${-(bw - 4)}Z`, fill: D.rubrosFijos.includes(k) ? 'var(--s1)' : 'var(--s2)' }, svg);
+    text(svg, lx, y + rowH / 2 + 3, corto(k), 'dl', 'end');
+    text(svg, x0 + bw + 6, y + rowH / 2 + 3, `${fM(v)} · ${fP(v / ing, 1)}`, 'dl');
+    const hit = el('rect', { x: 0, y, width: w, height: rowH, fill: 'transparent' }, svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${k}</b>${row('12 meses', fM(v))}${row('% del gasto', fP(v / all, 1))}${row('% de lo cobrado', fP(v / ing, 1))}${row('Promedio mensual', fM(v / 12))}<div class="muted" style="margin-top:4px">${DEF_RUBROS[k] || ''}</div>`));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+  $('#rubrosDef').innerHTML = `<div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Estructura fija (se paga todos los meses)</span><span><i class="sw" style="background:var(--s2)"></i>Acompaña al ingreso o es eventual</span></div>` +
+    Object.entries(DEF_RUBROS).map(([k, v]) => `<p style="margin:6px 0"><b>${k}:</b> <span class="muted">${v}</span></p>`).join('');
+
+  // mapa de calor
+  const ms = conDetalle, rubros = items.map(x => x[0]).concat(D.rubros.filter(r => !tot[r]));
+  let hmax = 0; ms.forEach(m => rubros.forEach(r => hmax = Math.max(hmax, V(m, m.rubros[r] || 0))));
+  const steps = ['--q1', '--q2', '--q3', '--q4', '--q5', '--q6', '--q7'];
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light' || document.documentElement.dataset.theme === 'dark';
+  let html = '<tr><th>Rubro</th>' + ms.map(m => `<th>${m.etiqueta}</th>`).join('') + '</tr>';
+  rubros.forEach(r => {
+    html += `<tr><td>${r}</td>` + ms.map(m => {
+      const v = V(m, m.rubros[r] || 0);
+      if (!v) return '<td class="c muted">·</td>';
+      const k = Math.min(6, Math.floor(Math.sqrt(v / hmax) * 7));
+      const inkLight = dark ? k < 5 : k >= 4;
+      return `<td class="c${inkLight ? ' dk' : ' lt'}" style="background:var(${steps[k]})" data-m="${m.mes}" data-r="${r}">${(v / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}</td>`;
+    }).join('') + '</tr>';
+  });
+  html += '<tr><th>Total gastos</th>' + ms.map(m => `<th>${(V(m, m.total_gastos) / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })}</th>`).join('') + '</tr>';
+  html += '<tr><th>% de lo cobrado</th>' + ms.map(m => `<th>${fP(m.pct_gastos)}</th>`).join('') + '</tr>';
+  const t = $('#heat'); t.innerHTML = html;
+  t.onmousemove = ev => {
+    const td = ev.target.closest('td[data-m]'); if (!td) return hideTip();
+    const m = D.meses.find(x => x.mes === td.dataset.m), r = td.dataset.r;
+    showTip(ev, `<b>${r} · ${m.etiqueta}</b>` + m.gastos.filter(g => g.rubro === r).map(g => row(g.concepto, fM(V(m, g.monto)))).join(''));
+  };
+  t.onmouseleave = hideTip;
+}
+
+// ---------- 6. Socios ----------
+function renderSocios() {
+  const ms = D.meses, h = 280, { svg, w } = svgFor('lineSocios', h);
+  const L = 52, R = 40, T = 12, B = 34, pw = w - L - R, ph = h - T - B;
+  const max = niceMax(Math.max(...ms.flatMap(m => D.socios.map(s => V(m, m.reparto[s] || 0)))));
+  yAxis(svg, L, w - R, T + ph, T, max);
+  const sx = i => L + pw * i / (ms.length - 1), sy = v => T + ph - ph * v / max;
+  ms.forEach((m, i) => { if ((ms.length - 1 - i) % Math.ceil(ms.length / Math.floor(pw / 48)) === 0) text(svg, sx(i), h - B + 16, m.etiqueta, 'lbl-sm', 'middle'); });
+  const ends = [];
+  D.socios.forEach(s => {
+    const d = ms.map((m, i) => `${i ? 'L' : 'M'}${sx(i)},${sy(V(m, m.reparto[s] || 0))}`).join('');
+    el('path', { d, fill: 'none', stroke: COL[s], 'stroke-width': 2, 'stroke-linejoin': 'round' }, svg);
+    ends.push({ s, y: sy(V(ms[ms.length - 1], ms[ms.length - 1].reparto[s] || 0)) });
+  });
+  ends.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
+  const over = ends[ends.length - 1].y - (T + ph);
+  if (over > 0) ends.forEach(e => e.y -= over);
+  ends.forEach(e => text(svg, w - R + 6, e.y + 4, e.s, 'dl'));
+  const cross = el('line', { y1: T, y2: T + ph, stroke: 'var(--axis)', visibility: 'hidden' }, svg);
+  const hit = el('rect', { x: L, y: T, width: pw, height: ph, fill: 'transparent' }, svg);
+  hit.addEventListener('mousemove', ev => {
+    const r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * w / r.width;
+    const i = Math.max(0, Math.min(ms.length - 1, Math.round((x - L) / pw * (ms.length - 1)))), m = ms[i];
+    cross.setAttribute('x1', sx(i)); cross.setAttribute('x2', sx(i)); cross.setAttribute('visibility', 'visible');
+    showTip(ev, `<b>${m.etiqueta}</b>` + D.socios.map(s => row(`${s} (${fP(m.shares[s] || 0)})`, fM(V(m, m.reparto[s] || 0)), COL[s])).join('') +
+      (D.socios.some(s => m.reintegros[s]) ? '<div class="muted" style="margin-top:4px">Reintegros: ' + D.socios.filter(s => m.reintegros[s]).map(s => `${s} ${fM(V(m, m.reintegros[s]))}`).join(', ') + '</div>' : ''));
+  });
+  hit.addEventListener('mouseleave', () => { hideTip(); cross.setAttribute('visibility', 'hidden'); });
+  $('#legSocios').innerHTML = D.socios.map(s => `<span><i class="sw" style="background:${COL[s]}"></i>${s}</span>`).join('');
+
+  // acumulado
+  const acc = D.socios.map(s => [s, ms.reduce((t, m) => t + V(m, m.reparto[s] || 0), 0), ms.reduce((t, m) => t + V(m, m.reintegros[s] || 0), 0)]);
+  const tot = acc.reduce((t, x) => t + x[1], 0);
+  const rowH = 30, h2 = acc.length * rowH + 4, g2 = svgFor('acumSocios', h2);
+  const lx = 44, x1 = g2.w - 150, amax = Math.max(...acc.map(x => x[1]));
+  acc.forEach(([s, v, re], i) => {
+    const y = i * rowH + 2, bw = (x1 - lx) * v / amax;
+    el('path', { d: `M${lx},${y + 5}h${bw - 4}q4,0 4,4v${rowH - 18}q0,4 -4,4h${-(bw - 4)}Z`, fill: COL[s] }, g2.svg);
+    text(g2.svg, lx - 6, y + rowH / 2 + 4, s, 'dl-strong', 'end');
+    text(g2.svg, lx + bw + 6, y + rowH / 2 + 4, `${fM(v)} · ${fP(v / tot)}`, 'dl');
+    const hit = el('rect', { x: 0, y, width: g2.w, height: rowH, fill: 'transparent' }, g2.svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${s}</b>${row('Reparto acumulado', fM(v))}${row('% del total repartido', fP(v / tot, 1))}${row('Reintegros de gastos', fM(re))}`));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+  // tabla de porcentajes por período
+  const per = [];
+  ms.forEach(m => { const k = D.socios.map(s => fP(m.shares[s] || 0)).join('|'); if (!per.length || per[per.length - 1].k !== k) per.push({ k, desde: m.etiqueta, hasta: m.etiqueta, m }); else per[per.length - 1].hasta = m.etiqueta; });
+  $('#tablaShares').innerHTML = '<tr><th>Período</th>' + D.socios.map(s => `<th>${s}</th>`).join('') + '</tr>' +
+    per.map(p => `<tr><td>${p.desde} a ${p.hasta}</td>${D.socios.map(s => `<td>${fP(p.m.shares[s] || 0)}</td>`).join('')}</tr>`).join('');
+}
+
+// ---------- 7-9. Texto ----------
+function renderTextos() {
+  $('#concl').innerHTML = D.conclusiones.map(([t, p]) => `<div class="card"><h3>${t}</h3><p>${p}</p></div>`).join('');
+  const orden = { Alta: 0, Media: 1, Baja: 2 };
+  $('#ideasGrid').innerHTML = D.ideas.slice().sort((a, b) => orden[a[2]] - orden[b[2]] || (b[5] || 0) - (a[5] || 0)).map(([t, cat, pri, dif, p, imp]) =>
+    `<div class="card idea"><div><span class="pill ${pri === 'Alta' ? 'alta' : ''}">Prioridad ${pri.toLowerCase()}</span><span class="pill">Esfuerzo ${dif.toLowerCase()}</span><span class="pill">${cat}</span></div>
+     <h3 style="margin-top:8px">${t}</h3><p>${p}</p>${imp ? `<div class="imp">Impacto estimado: ~${fM(imp)} por año</div>` : ''}</div>`).join('');
+  const a = D.analisis, t12 = a.tot12;
+  const com = conDetalle.slice(-2).map(m => m.gastos.filter(g => /variable/i.test(g.concepto)).reduce((s, g) => s + g.monto, 0) / (m.rubros['Equipo comercial'] || 1));
+  const bench = [
+    ['Margen neto', `${fP(t12.neto_socios / t12.ingreso)} (antes de pagar a los socios)`, '19–24% en franquicias de servicios, después de sueldos', 'No son comparables en forma directa: los socios trabajan y no cobran sueldo. Para comparar, hay que restar un sueldo de mercado por cada socio.'],
+    ['Peso de la estructura', `${fP(t12.total_gastos / t12.ingreso)} de lo cobrado`, 'Franquicias de servicios: estructura liviana, pocos empleados, local chico', 'Es un peso bajo en promedio, pero llega a más del 60% en meses flojos.'],
+    ['Remuneración comercial', `${fP(Math.max(...com))} variable en el mejor mes reciente`, '60% fijo y 40% variable en ventas B2B', 'Hasta jul-26 era 100% fija. El variable nuevo acerca el costo al resultado.'],
+    ['Impuesto al cheque + bancos', `${fP(D.analisis.rub12['Bancos e imp. al cheque'] / t12.ingreso, 1)} de lo cobrado`, '1,2% teórico (0,6% al entrar + 0,6% al salir)', 'Puede computarse contra Ganancias: 100% si Virtus es micro o pequeña empresa con Certificado MiPyME.'],
+    ['Variabilidad del ingreso', `${fP(a.cv12)} (coef. de variación)`, 'Menos de 20–30% en negocios de abono recurrente', 'Alta. Obliga a tener fondo de resguardo y a hacer más variables los costos.'],
+    ['Recupero de la inversión', 'Sin inversión inicial relevante registrada', '2 a 4 años en franquicias argentinas', 'Una franquicia de comisión casi no inmoviliza capital, y eso le da una ventaja fuerte.'],
+  ];
+  $('#bench').innerHTML = '<tr><th>Indicador</th><th style="text-align:left">Virtus Cuyo</th><th style="text-align:left">Referencia</th><th style="text-align:left">Lectura</th></tr>' +
+    bench.map(b => `<tr><td><b>${b[0]}</b></td><td style="text-align:left;white-space:normal">${b[1]}</td><td style="text-align:left;white-space:normal">${b[2]}</td><td style="text-align:left;white-space:normal;color:var(--ink-2)">${b[3]}</td></tr>`).join('');
+  $('#supuestos').innerHTML = [
+    'Cada hoja del Excel es una liquidación. El nombre de la hoja es el mes en que se repartió y el paréntesis es el mes de las ventas.',
+    '“Cobrado de Equifax” es la fila <i>Pagado Virtus</i>. El saldo que quedó del mes anterior se muestra aparte, para no contarlo dos veces.',
+    'Los gastos de cada hoja se clasificaron en rubros por palabras clave (ver <code>extraer_datos.py</code>). Todos los meses cierran: disponible = gastos + resguardo + reparto.',
+    'Dic-25 se liquidó en dos hojas (“Enero parcial” 1 y 2) y acá se suman.',
+    'De ene-25 a abr-25 solo hay un resumen (impuestos, comercial, contadora, call center). De nov-24 y dic-24 solo se conoce el monto repartido.',
+    '⚠ Abr-25 (hoja “Meses anteriores”) y may-25 (hoja “Mayo (abril)”) tienen exactamente las mismas cifras, y “Pagado a socios” muestra dos repartos casi iguales. Conviene confirmar si fue un mes repetido.',
+    'En jun-25 hay una diferencia de $15.000 entre la suma de los gastos y el total de la hoja: aparece como “Diferencia sin detalle”.',
+    `<i>Pesos de hoy</i> ajusta por IPC a pesos de ${D.ipcBase}. ${D.ipcNota}`,
+    'Los datos personales (CBU, alias) del Excel no se copian al tablero.',
+  ].map(s => `<li style="margin-bottom:6px">${s}</li>`).join('');
+  const cols = ['Mes', 'Ventas de', 'Cobrado', 'Saldo ant.', 'Gastos', '% gastos', 'Resguardo', 'Socios', ...D.socios];
+  $('#tablaTodo').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>' + D.meses.map(m => `<tr><td>${m.etiqueta}</td><td>${D.meses.find(x => x.mes === m.venta)?.etiqueta || (m.venta ? m.venta : '–')}</td><td>${m.ingreso ? f$(V(m, m.ingreso)) : '–'}</td><td>${f$(V(m, m.saldo_anterior || 0))}</td><td>${f$(V(m, m.total_gastos || 0))}</td><td>${m.pct_gastos ? fP(m.pct_gastos) : '–'}</td><td>${f$(V(m, m.resguardo || 0))}</td><td>${f$(V(m, m.neto_socios))}</td>${D.socios.map(s => `<td>${f$(V(m, m.reparto[s] || 0))}</td>`).join('')}</tr>`).join('');
+}
+
+function renderAll() {
+  $('#unidadNota').textContent = S.real ? `Montos en pesos de ${D.ipcBase} (ajustados por inflación).` : 'Montos en pesos de cada mes, sin ajustar por inflación.';
+  renderKpis(); renderMes(); renderEvol(); renderScatter(); renderCostos(); renderSocios(); renderTextos();
+}
+$('#bNom').onclick = () => { S.real = false; $('#bNom').setAttribute('aria-pressed', 'true'); $('#bReal').setAttribute('aria-pressed', 'false'); renderAll(); };
+$('#bReal').onclick = () => { S.real = true; $('#bReal').setAttribute('aria-pressed', 'true'); $('#bNom').setAttribute('aria-pressed', 'false'); renderAll(); };
+$('#bTema').onclick = () => {
+  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('virtus-tema', r.dataset.theme); } catch (e) {}
+  renderAll();
+};
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderAll, 150); });
+renderMesSelect(); renderAll();
+</script>
+</body>
+</html>
