@@ -13,8 +13,11 @@ externas**, así que funciona sin internet y no manda datos a ningún lado.
 pip install openpyxl
 cd franquicia_equifax
 python extraer_datos.py ~/Descargas/Calculo_transferencias_Virtus.xlsx   # -> datos/virtus_mensual.json
+python extraer_prospeccion.py ~/Descargas/PROSPECCION.xlsx              # -> datos/prospeccion.json (opcional)
 python generar_tablero.py                                                 # -> salida/tablero_virtus.html
 ```
+
+Si existe `datos/prospeccion.json`, el tablero suma la pestaña **Prospección**.
 
 Después abrís `salida/tablero_virtus.html` con doble clic.
 
@@ -35,6 +38,9 @@ Cada mes, cuando agregues la hoja nueva al Excel:
 | Costos | Ranking de rubros y mapa de calor rubro × mes, con el detalle de cada concepto |
 | Socios | Reparto mensual, acumulado y cambios de porcentaje |
 | Conclusiones, ideas y comparación | Análisis con los números actualizados, contra negocios parecidos |
+| **Pestaña Prospección** | Embudo llamada → atiende → interesado → alta, comparación por comercial y por mes, día a día, día de la semana (con intervalos de confianza), patrones, comparación con estudios de call centers y sugerencias |
+
+El mapa de calor de gastos tiene un selector de año.
 
 El botón **Pesos de hoy** ajusta todos los montos por inflación (IPC INDEC).
 
@@ -42,6 +48,8 @@ El botón **Pesos de hoy** ajusta todos los montos por inflación (IPC INDEC).
 
 - `extraer_datos.py`: lee todas las hojas (que tienen formatos distintos), clasifica cada gasto en un rubro y verifica que cada mes cierre (disponible = gastos + resguardo + reparto).
 - `generar_tablero.py`: calcula los indicadores y escribe los textos de análisis con esos números.
+- `extraer_prospeccion.py`: lee la planilla de llamadas (un bloque por comercial y por mes) y descarta los bloques copiados de otra hoja.
+- `prospeccion.py`: calcula el embudo, los patrones y los textos de la pestaña Prospección.
 - `plantilla.html`: el diseño y los gráficos (SVG + JavaScript, sin librerías).
 - `config/ipc.json`: la inflación mensual. **Enero a julio de 2026 son una estimación**: reemplazala por el dato oficial.
 

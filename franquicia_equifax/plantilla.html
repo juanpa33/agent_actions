@@ -108,6 +108,17 @@ th { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
 .split div { white-space: nowrap; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; }
 .split-leg { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; font-size: 13px; }
 .muted { color: var(--muted); }
+.tabs { display: inline-flex; gap: 4px; background: var(--surface-2); border-radius: 10px; padding: 3px; }
+.tabs button { border: 0; background: transparent; color: var(--ink-2); padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.heat-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.heat td.c { min-width: 44px; }
+.anios .seg button { padding: 4px 12px; }
+.num-list { counter-reset: n; display: grid; gap: 12px; }
+.num-list .card { position: relative; padding-left: 52px; }
+.num-list .card::before { counter-increment: n; content: counter(n); position: absolute; left: 16px; top: 16px; font-size: 20px; font-weight: 700; color: var(--s1); }
+.num-list p { margin: 6px 0 0; font-size: 14px; color: var(--ink-2); }
+.ci { stroke: var(--ink-2); stroke-width: 1.5; }
 footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); }
 a { color: var(--s1); }
 dl.glos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14px; margin: 0; }
@@ -122,7 +133,11 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
 <header class="top"><div class="wrap">
   <div class="brand">Virtus · Franquicia Equifax Cuyo<small id="rango"></small></div>
   <div class="controls">
-    <div class="seg" role="group" aria-label="Unidad de los montos">
+    <div class="tabs" role="tablist" aria-label="Pestañas del tablero">
+      <button role="tab" id="tFin" aria-selected="true" aria-controls="tabFin">Finanzas</button>
+      <button role="tab" id="tPros" aria-selected="false" aria-controls="tabPros">Prospección</button>
+    </div>
+    <div class="seg" id="segUnidad" role="group" aria-label="Unidad de los montos">
       <button id="bNom" aria-pressed="true">Pesos de cada mes</button>
       <button id="bReal" aria-pressed="false">Pesos de hoy</button>
     </div>
@@ -130,7 +145,7 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
   </div>
 </div></header>
 
-<main class="wrap">
+<main class="wrap" id="tabFin" role="tabpanel">
   <h1>Tablero de control del negocio</h1>
   <p class="lead">Cada mes Equifax transfiere a Virtus la comisión por lo que se vendió en Cuyo. De ahí se pagan los gastos, se aparta un fondo de resguardo
   y el resto se reparte entre los cuatro socios según su porcentaje. Este tablero toma el Excel de liquidaciones, lo ordena y lo explica paso a paso.
@@ -197,8 +212,8 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
       <div class="card"><h3>Qué entra en cada rubro</h3><div id="rubrosDef" style="font-size:13.5px"></div></div>
     </div>
     <div class="card" style="margin-top:14px">
-      <h3>Mapa de calor: gasto por rubro y por mes</h3>
-      <p class="muted" style="margin:0 0 8px;font-size:13px">Más oscuro = más gasto. Pasá el mouse por una celda para ver el detalle.</p>
+      <div class="heat-head"><h3 style="margin:0">Mapa de calor: gasto por rubro y por mes</h3><div class="anios"><div class="seg" id="heatAnios" role="group" aria-label="Año del mapa de calor"></div></div></div>
+      <p class="muted" style="margin:6px 0 8px;font-size:13px">Más oscuro = más gasto (la escala de color es la misma para todos los años). Pasá el mouse por una celda para ver el detalle.</p>
       <div class="scroll"><table class="heat" id="heat"></table></div>
     </div>
   </section>
@@ -277,6 +292,80 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
     </div>
   </section>
   <footer>Generado localmente a partir del Excel de liquidaciones. No reemplaza el asesoramiento contable ni impositivo. Datos privados de la sociedad: no publicar.</footer>
+</main>
+
+<main class="wrap" id="tabPros" role="tabpanel" hidden>
+  <h1>Prospección telefónica</h1>
+  <p class="lead">Análisis de la planilla compartida de llamadas: cuántas se hacen, cuántas atienden, cuántos se interesan y cuántos terminan en alta, por comercial y por día.
+  <b>Hay pocos datos todavía</b>, así que cada porcentaje se muestra con su rango probable. Si los rangos se superponen, la diferencia puede ser casualidad.</p>
+  <nav class="toc">
+    <a href="#p-resumen">Resumen</a><a href="#p-embudo">Embudo</a><a href="#p-comerciales">Por comercial</a><a href="#p-diario">Día a día</a>
+    <a href="#p-semana">Día de la semana</a><a href="#p-patrones">Patrones</a><a href="#p-bench">Comparación externa</a><a href="#p-sugerencias">Sugerencias</a>
+  </nav>
+
+  <section id="p-resumen"><h2>1. Resumen</h2><p class="lead" id="pLead"></p><div class="grid kpis" id="pKpis"></div></section>
+
+  <section id="p-embudo">
+    <h2>2. El embudo: de la llamada al alta</h2>
+    <p class="lead">Cada escalón muestra cuántos pasan a la etapa siguiente. En ventas telefónicas la pérdida más cara es la del final: gente que dijo “me interesa” y nunca llegó a ser cliente.</p>
+    <div class="grid two">
+      <div class="card"><div class="chart" id="pEmbudo"></div></div>
+      <div class="card"><h3>Cómo leerlo</h3><div id="pEmbudoTxt" style="font-size:14px"></div></div>
+    </div>
+  </section>
+
+  <section id="p-comerciales">
+    <h2>3. Por comercial y por mes</h2>
+    <div class="card scroll"><table id="pTablaCom"></table></div>
+    <div class="card scroll" style="margin-top:14px"><h3>Mes a mes</h3><table id="pTablaMes"></table></div>
+  </section>
+
+  <section id="p-diario">
+    <h2>4. Día a día</h2>
+    <p class="lead">Cada barra es un día de trabajo: la altura es la cantidad de llamadas y los colores muestran qué pasó con ellas.</p>
+    <div class="card">
+      <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Interesados</span><span><i class="sw" style="background:var(--s2)"></i>Atendió, no interesado</span><span><i class="sw" style="background:var(--axis)"></i>No atendió</span></div>
+      <div id="pDiario"></div>
+    </div>
+  </section>
+
+  <section id="p-semana">
+    <h2>5. ¿Hay días mejores para llamar?</h2>
+    <p class="lead">Interesados por cada 100 llamadas según el día de la semana. La línea fina muestra el rango probable (intervalo de confianza del 95%): mientras sea tan ancho, la diferencia entre días no es confiable.</p>
+    <div class="grid two">
+      <div class="card"><div class="chart" id="pSemana"></div></div>
+      <div class="card"><h3>¿Y el horario?</h3><p style="font-size:14px;margin:0">La planilla no registra la hora de cada llamada, así que el horario no se puede analizar. Los estudios externos coinciden en dos ventanas: <b>10 a 12 h</b> y <b>16 a 18 h</b>, en la hora del prospecto. Con una columna “hora” durante un mes ya se podría ver si en Cuyo se cumple.</p>
+      <div class="explica"><b>Por qué el rango importa:</b> con 40 llamadas, un 30% de interés puede ser en realidad cualquier valor entre 18% y 45%. Recién con unas 150–200 llamadas por día de la semana las diferencias empiezan a ser confiables.</div></div>
+    </div>
+  </section>
+
+  <section id="p-patrones"><h2>6. Patrones detectados</h2><div class="num-list" id="pPatrones"></div></section>
+
+  <section id="p-bench">
+    <h2>7. Comparación con call centers y equipos de prospección</h2>
+    <div class="card scroll"><table id="pBench"></table></div>
+    <p class="muted" style="font-size:12.5px">Las referencias son de estudios de llamadas en frío B2B de 2025–2026, casi todos de EE. UU. y Europa. Sirven como orden de magnitud: la prospección local, con bases tibias y relaciones personales, suele tener tasas de contacto más altas.</p>
+  </section>
+
+  <section id="p-sugerencias"><h2>8. Sugerencias para el equipo</h2><div class="num-list" id="pSug"></div></section>
+
+  <section>
+    <h2>Datos y fuentes</h2>
+    <div class="grid two">
+      <div class="card"><h3>Cómo se armaron los datos</h3><ul style="font-size:14px;color:var(--ink-2);padding-left:18px;margin:0" id="pAvisos"></ul></div>
+      <div class="card"><h3>Estudios consultados</h3>
+        <ul style="font-size:13.5px;padding-left:18px;margin:0">
+          <li><a href="https://belkins.io/blog/cold-calling-benchmarks">Belkins: B2B cold calling benchmarks 2026</a></li>
+          <li><a href="https://skipcall.io/en/blog/cold-call-connect-rate-benchmarks">Skipcall: tasa de contacto 8–12%</a> y <a href="https://skipcall.io/en/blog/how-many-cold-calls-per-day">llamadas por día (50–80)</a></li>
+          <li><a href="https://optif.ai/learn/questions/cold-call-to-meeting-conversion-rate/">Optifai: de llamada a reunión (939 empresas)</a></li>
+          <li><a href="https://pipeline.zoominfo.com/sales/best-days-to-cold-call">ZoomInfo: mejores días (1,4 M de llamadas)</a> y <a href="https://www.cognism.com/blog/best-time-to-cold-call">Cognism: mejor horario</a></li>
+          <li><a href="https://www.myphoner.com/blog/es/estad-sticas-de-llamadas-en-frio-a-considerar/">Myphoner: estadísticas de llamadas en frío</a> y <a href="https://salesdorado.com/en/cold-calling/statistics-on-telephone-prospecting/">Salesdorado: prospección telefónica</a></li>
+          <li><a href="https://www.cleverly.co/blog/sdr-kpis-metrics">Cleverly: KPIs de SDR 2026</a> y <a href="https://levelupleads.io/blog/b2b-outbound-benchmarks/">LevelUp Leads: benchmarks outbound</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <footer>Generado localmente a partir de la planilla de prospección. Datos internos del equipo: no publicar.</footer>
 </main>
 <div class="tip" id="tip" role="tooltip"></div>
 
@@ -540,11 +629,15 @@ function renderCostos() {
     Object.entries(DEF_RUBROS).map(([k, v]) => `<p style="margin:6px 0"><b>${k}:</b> <span class="muted">${v}</span></p>`).join('');
 
   // mapa de calor
-  const ms = conDetalle, rubros = items.map(x => x[0]).concat(D.rubros.filter(r => !tot[r]));
-  let hmax = 0; ms.forEach(m => rubros.forEach(r => hmax = Math.max(hmax, V(m, m.rubros[r] || 0))));
+  const anios = [...new Set(conDetalle.map(m => m.mes.slice(0, 4)))];
+  if (!anios.includes(S.anio)) S.anio = anios[anios.length - 1];
+  $('#heatAnios').innerHTML = anios.map(y => `<button aria-pressed="${y === S.anio}" data-y="${y}">${y}</button>`).join('');
+  $('#heatAnios').onclick = ev => { const b = ev.target.closest('button'); if (b) { S.anio = b.dataset.y; renderCostos(); } };
+  const ms = conDetalle.filter(m => m.mes.startsWith(S.anio)), rubros = items.map(x => x[0]).concat(D.rubros.filter(r => !tot[r]));
+  let hmax = 0; conDetalle.forEach(m => rubros.forEach(r => hmax = Math.max(hmax, V(m, m.rubros[r] || 0))));
   const steps = ['--q1', '--q2', '--q3', '--q4', '--q5', '--q6', '--q7'];
   const dark = matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light' || document.documentElement.dataset.theme === 'dark';
-  let html = '<tr><th>Rubro</th>' + ms.map(m => `<th>${m.etiqueta}</th>`).join('') + '</tr>';
+  let html = '<tr><th>Rubro</th>' + ms.map(m => `<th>${m.etiqueta.slice(0, 3)}</th>`).join('') + '</tr>';
   rubros.forEach(r => {
     html += `<tr><td>${r}</td>` + ms.map(m => {
       const v = V(m, m.rubros[r] || 0);
@@ -651,6 +744,120 @@ function renderTextos() {
   $('#tablaTodo').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>' + D.meses.map(m => `<tr><td>${m.etiqueta}</td><td>${D.meses.find(x => x.mes === m.venta)?.etiqueta || (m.venta ? m.venta : '–')}</td><td>${m.ingreso ? f$(V(m, m.ingreso)) : '–'}</td><td>${f$(V(m, m.saldo_anterior || 0))}</td><td>${f$(V(m, m.total_gastos || 0))}</td><td>${m.pct_gastos ? fP(m.pct_gastos) : '–'}</td><td>${f$(V(m, m.resguardo || 0))}</td><td>${f$(V(m, m.neto_socios))}</td>${D.socios.map(s => `<td>${f$(V(m, m.reparto[s] || 0))}</td>`).join('')}</tr>`).join('');
 }
 
+
+// ================= Prospección =================
+const P = D.prospeccion;
+const COLC = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
+function renderPros() {
+  if (!P) { $('#tabPros').innerHTML = '<h1>Prospección</h1><p class="lead">Todavía no hay datos: corré <code>extraer_prospeccion.py</code> con la planilla y volvé a generar el tablero.</p>'; return; }
+  const t = P.total, pc = P.por_com;
+  $('#pLead').innerHTML = `${P.comerciales.join(' y ')} registraron <b>${t.dias} jornadas</b> entre ${P.dias[0].etiqueta} y ${P.dias[P.dias.length - 1].etiqueta}. La planilla anota totales por día, sin hora ni nombre del prospecto.`;
+  const k = [
+    ['Llamadas', t.llamadas.toFixed(0), `${t.llamadas_por_dia.toFixed(0)} por comercial por día`, 'Cada intento de llamada registrado, haya atendido o no.'],
+    ['Tasa de contacto', fP(t.tasa_respuesta), `${t.respondieron.toFixed(0)} atendieron`, 'Qué porcentaje de las llamadas terminó en una conversación. En frío, lo habitual es 8–12%.'],
+    ['Interesados', t.interesados.toFixed(0), `${fP(t.tasa_interes)} de los que atendieron`, `Prospectos que mostraron interés. Por cada 100 llamadas: ${(t.interes_por_llamada * 100).toFixed(0)} (rango probable ${fP(t.ic_interes[0])}–${fP(t.ic_interes[1])}).`],
+    ['Altas cerradas', t.cerrados.toFixed(0), `+ ${t.por_cerrar.toFixed(0)} por cerrar`, 'Clientes que se dieron de alta. La planilla los anota como total del mes, no por día.'],
+    ['Llamadas por alta', P.llam_por_alta ? P.llam_por_alta.toFixed(0) : '–', 'solo meses con cierres registrados', 'Cuántas llamadas hicieron falta, en promedio, para conseguir un cliente. Es la medida de eficacia más importante.'],
+    ['Interesados sin cierre', P.int_sin_cierre.toFixed(0), P.meses_sin_cierre.join(', '), 'Personas que dijeron “me interesa” en meses sin ningún alta registrada. Es la oportunidad más concreta de mejora.'],
+  ];
+  $('#pKpis').innerHTML = k.map(([l, v, s2, e]) => `<div class="card kpi"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s2}</div><details><summary>¿Qué significa?</summary>${e}</details></div>`).join('');
+
+  // Embudo
+  const et = [['Llamadas', t.llamadas], ['Atendieron', t.respondieron], ['Interesados', t.interesados], ['Altas (+ por cerrar)', t.cerrados + t.por_cerrar], ['Altas cerradas', t.cerrados]];
+  const rowH = 50, h = et.length * rowH + 4, { svg, w } = svgFor('pEmbudo', h);
+  const x0 = 4, maxW = w * 0.55;
+  et.forEach(([lab, v], i) => {
+    const bw = Math.max(6, maxW * Math.sqrt(v / t.llamadas)), y = i * rowH + 4;
+    el('path', { d: `M${x0},${y + 18}h${bw - 4}q4,0 4,4v${rowH - 32}q0,4 -4,4h${-(bw - 4)}Z`, fill: i === et.length - 1 ? 'var(--s3)' : 'var(--s1)' }, svg);
+    text(svg, x0, y + 12, lab, 'dl');
+    const conv = i ? `  ·  ${fP(v / et[i - 1][1], v / et[i - 1][1] < 0.1 ? 1 : 0)} del paso anterior` : '';
+    const tt = text(svg, x0 + bw + 8, y + 18 + (rowH - 24) / 2 + 3, v.toFixed(0), 'dl-strong');
+    if (conv) text(svg, x0 + bw + 8 + 10 + String(v.toFixed(0)).length * 7, y + 18 + (rowH - 24) / 2 + 3, conv, 'dl');
+  });
+  $('#pEmbudoTxt').innerHTML = `<p>El largo de cada barra es proporcional a la raíz de la cantidad, para que las etapas chicas se vean. A la derecha, qué porcentaje pasó desde la etapa anterior.</p>
+    <p>El paso <b>llamada → atiende</b> (${fP(t.tasa_respuesta)}) y el paso <b>atiende → interesado</b> (${fP(t.tasa_interes)}) están muy por encima de las referencias externas.
+    El paso débil es <b>interesado → alta</b>: ${t.cerrados.toFixed(0)} altas y ${t.por_cerrar.toFixed(0)} por cerrar sobre ${t.interesados.toFixed(0)} interesados (${fP((t.cerrados) / t.interesados, 1)}).</p>
+    <div class="explica"><b>Lección:</b> el equipo es bueno abriendo conversaciones. Falta un <b>proceso de seguimiento</b> que convierta el interés en altas, con dueño, fecha y registro.</div>`;
+
+  // Tablas
+  const col = (c, i) => `<i class="sw" style="background:${COLC[i]}"></i> ${c}`;
+  const hdr = '<tr><th>Comercial</th><th>Días</th><th>Llamadas</th><th>Por día</th><th>Atendieron</th><th>% contacto</th><th>Interesados</th><th>% interés (de los que atienden)</th><th>Interesados c/100 llamadas (rango)</th><th>Altas</th><th>Por cerrar</th></tr>';
+  const fila = (lab, x) => `<tr><td>${lab}</td><td>${x.dias}</td><td>${x.llamadas.toFixed(0)}</td><td>${x.llamadas_por_dia.toFixed(1)}</td><td>${x.respondieron.toFixed(0)}</td><td>${fP(x.tasa_respuesta)}</td><td>${x.interesados.toFixed(0)}</td><td>${fP(x.tasa_interes)}</td><td>${(x.interes_por_llamada * 100).toFixed(0)} (${(x.ic_interes[0] * 100).toFixed(0)}–${(x.ic_interes[1] * 100).toFixed(0)})</td><td>${x.cerrados ?? '–'}</td><td>${x.por_cerrar ?? '–'}</td></tr>`;
+  $('#pTablaCom').innerHTML = hdr + P.comerciales.map((c, i) => fila(col(c, i), pc[c])).join('') + fila('<b>Equipo</b>', t);
+  $('#pTablaMes').innerHTML = '<tr><th>Mes</th><th>Comercial</th><th>Días</th><th>Llamadas</th><th>% contacto</th><th>% interés</th><th>Interesados c/100 llamadas</th><th>Altas del mes (equipo)</th></tr>' +
+    P.por_mes.flatMap(pm => P.comerciales.filter(c => pm[c]).map((c, j) => `<tr><td>${j ? '' : pm.etiqueta}</td><td>${c}</td><td>${pm[c].dias}</td><td>${pm[c].llamadas.toFixed(0)}</td><td>${fP(pm[c].tasa_respuesta)}</td><td>${fP(pm[c].tasa_interes)}</td><td>${(pm[c].interes_por_llamada * 100).toFixed(0)}</td><td>${j ? '' : pm.cerrados.toFixed(0)}</td></tr>`)).join('');
+
+  // Día a día: un gráfico por comercial (small multiples, misma escala)
+  const box = $('#pDiario'); box.innerHTML = '';
+  const fechas = [...new Set(P.dias.map(d => d.fecha))].sort();
+  const ymax = niceMax(Math.max(...P.dias.map(d => d.llamadas)));
+  P.comerciales.forEach((c, ci) => {
+    const wrapC = document.createElement('div'); wrapC.innerHTML = `<h3 style="margin:10px 0 2px">${c}</h3><div class="chart" id="pD${ci}"></div>`; box.appendChild(wrapC);
+    const hh = 170, g = svgFor('pD' + ci, hh), L = 34, R = 6, T = 8, B = 26, pw = g.w - L - R, ph = hh - T - B;
+    yAxis(g.svg, L, g.w - R, T + ph, T, ymax, v => v.toFixed(0), 2);
+    const bw = pw / fechas.length, gap = Math.max(2, bw * 0.25), sy = v => ph * v / ymax;
+    const paso = Math.ceil(fechas.length / Math.floor(pw / 46));
+    fechas.forEach((f, i) => {
+      const d = P.dias.find(x => x.fecha === f && x.comercial === c), x = L + i * bw + gap / 2, wi = bw - gap;
+      if ((fechas.length - 1 - i) % paso === 0) text(g.svg, x + wi / 2, hh - 8, P.dias.find(x => x.fecha === f).etiqueta, 'lbl-sm', 'middle');
+      if (!d) return;
+      const segs = [['Interesados', d.interesados, 'var(--s1)'], ['No interesado', d.respondieron - d.interesados, 'var(--s2)'], ['No atendió', d.llamadas - d.respondieron, 'var(--axis)']].filter(s2 => s2[1] > 0);
+      let y = T + ph;
+      segs.forEach(([lab, v, fill], j) => {
+        const hgt = sy(v); y -= hgt;
+        el('path', { d: j === segs.length - 1 ? barPath(x, y, wi, hgt - (j ? 2 : 0)) : `M${x},${y}h${wi}v${Math.max(0, hgt - (j ? 2 : 0))}h${-wi}Z`, fill }, g.svg);
+      });
+      const hit = el('rect', { x: L + i * bw, y: T, width: bw, height: ph, fill: 'transparent' }, g.svg);
+      hit.addEventListener('mousemove', ev => showTip(ev, `<b>${c} · ${DIAS_ES[d.dow]} ${d.etiqueta}</b>${row('Llamadas', d.llamadas)}${row('Atendieron', `${d.respondieron} (${fP(d.respondieron / d.llamadas)})`)}${row('Interesados', d.interesados, 'var(--s1)')}${row('No interesados', d.no_interesados, 'var(--s2)')}${row('No atendió', d.llamadas - d.respondieron, 'var(--axis)')}`));
+      hit.addEventListener('mouseleave', hideTip);
+    });
+  });
+
+  // Día de la semana con intervalo de confianza
+  const dw = P.por_dow, hs = 250, gs = svgFor('pSemana', hs), L = 40, R = 10, T = 14, B = 42, pw = gs.w - L - R, ph = hs - T - B;
+  const smax = niceMax(Math.max(...dw.map(x => x.ic_interes[1])) * 100);
+  yAxis(gs.svg, L, gs.w - R, T + ph, T, smax, v => v.toFixed(0), smax % 5 === 0 ? 5 : 4);
+  const sy = v => T + ph - ph * v / smax, bw = pw / dw.length, avg = t.interes_por_llamada * 100;
+  el('line', { x1: L, x2: gs.w - R, y1: sy(avg), y2: sy(avg), stroke: 'var(--muted)', 'stroke-dasharray': '4 4' }, gs.svg);
+  text(gs.svg, gs.w - R, sy(avg) - 5, `promedio ${avg.toFixed(0)}`, 'lbl-sm', 'end');
+  dw.forEach((x, i) => {
+    const v = x.interes_por_llamada * 100, cx2 = L + i * bw + bw / 2, wi = Math.min(46, bw * 0.55);
+    el('path', { d: barPath(cx2 - wi / 2, sy(v), wi, T + ph - sy(v)), fill: 'var(--s1)' }, gs.svg);
+    el('line', { x1: cx2, x2: cx2, y1: sy(x.ic_interes[0] * 100), y2: sy(x.ic_interes[1] * 100), class: 'ci' }, gs.svg);
+    [x.ic_interes[0], x.ic_interes[1]].forEach(q => el('line', { x1: cx2 - 5, x2: cx2 + 5, y1: sy(q * 100), y2: sy(q * 100), class: 'ci' }, gs.svg));
+    text(gs.svg, cx2, hs - B + 16, x.dia.slice(0, 3), 'lbl-sm', 'middle');
+    text(gs.svg, cx2, hs - B + 30, `${x.llamadas.toFixed(0)} llam.`, 'lbl-sm', 'middle');
+    const hit = el('rect', { x: L + i * bw, y: T, width: bw, height: ph, fill: 'transparent' }, gs.svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `<b>${x.dia}</b>${row('Jornadas', x.dias)}${row('Llamadas', x.llamadas.toFixed(0))}${row('Interesados c/100 llamadas', v.toFixed(0))}${row('Rango probable', `${(x.ic_interes[0] * 100).toFixed(0)}–${(x.ic_interes[1] * 100).toFixed(0)}`)}${row('% contacto', fP(x.tasa_respuesta))}`));
+    hit.addEventListener('mouseleave', hideTip);
+  });
+
+  $('#pPatrones').innerHTML = P.patrones.map(([ti, p]) => `<div class="card"><h3>${ti}</h3><p>${p}</p></div>`).join('');
+  $('#pBench').innerHTML = '<tr><th>Indicador</th><th style="text-align:left">Equipo Virtus</th><th style="text-align:left">Referencia externa</th><th style="text-align:left">Lectura</th></tr>' +
+    P.benchmark.map(b => `<tr><td><b>${b[0]}</b></td><td style="text-align:left;white-space:normal">${b[1]}</td><td style="text-align:left;white-space:normal">${b[2]}</td><td style="text-align:left;white-space:normal;color:var(--ink-2)">${b[3]}</td></tr>`).join('');
+  $('#pSug').innerHTML = P.sugerencias.map(([ti, p]) => `<div class="card"><h3>${ti}</h3><p>${p}</p></div>`).join('');
+  $('#pAvisos').innerHTML = [
+    'Cada hoja es un mes y cada comercial tiene un bloque con totales por día. Se toman las filas de llamadas, respondieron, interesados y no interesados.',
+    'Los cierres (“CERRADO” y “Por cerrar”) figuran como total del mes por comercial, así que no se pueden asignar a un día.',
+    ...P.avisos.map(a => '⚠ ' + a),
+    'Se asume que las fechas son de ' + (P.dias[0]?.fecha.slice(0, 4) || '') + '. La planilla no tiene año ni hora.',
+  ].map(x => `<li style="margin-bottom:6px">${x}</li>`).join('');
+}
+const DIAS_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+// ---------- pestañas ----------
+function tab(cual) {
+  const pros = cual === 'pros';
+  $('#tabFin').hidden = pros; $('#tabPros').hidden = !pros;
+  $('#tFin').setAttribute('aria-selected', !pros); $('#tPros').setAttribute('aria-selected', pros);
+  $('#segUnidad').style.display = pros ? 'none' : '';
+  try { history.replaceState(null, '', pros ? '#prospeccion' : '#finanzas'); } catch (e) {}
+  scrollTo(0, 0);
+  pros ? renderPros() : renderAll();
+}
+$('#tFin').onclick = () => tab('fin');
+$('#tPros').onclick = () => tab('pros');
+
 function renderAll() {
   $('#unidadNota').textContent = S.real ? `Montos en pesos de ${D.ipcBase} (ajustados por inflación).` : 'Montos en pesos de cada mes, sin ajustar por inflación.';
   renderKpis(); renderMes(); renderEvol(); renderScatter(); renderCostos(); renderSocios(); renderTextos();
@@ -661,10 +868,12 @@ $('#bTema').onclick = () => {
   const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   r.dataset.theme = dark ? 'light' : 'dark';
   try { localStorage.setItem('virtus-tema', r.dataset.theme); } catch (e) {}
-  renderAll();
+  activo();
 };
-let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderAll, 150); });
+const activo = () => $('#tabPros').hidden ? renderAll() : renderPros();
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(activo, 150); });
 renderMesSelect(); renderAll();
+if (location.hash === '#prospeccion' || location.hash.startsWith('#p-')) tab('pros');
 </script>
 </body>
 </html>

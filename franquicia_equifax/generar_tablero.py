@@ -15,6 +15,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import prospeccion
+
 AQUI = Path(__file__).parent
 MESES_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 
@@ -265,7 +267,12 @@ def main(entrada: str, salida: str) -> None:
         "ideas": tx["ideas"],
         "ipcNota": ipc["_fuente"],
         "ipcBase": etiqueta(ipc["base"]),
+        "prospeccion": None,
     }
+    ruta_p = Path(entrada).parent / "prospeccion.json"
+    if ruta_p.exists():
+        pa = prospeccion.analizar(json.loads(ruta_p.read_text()))
+        payload["prospeccion"] = {**pa, **prospeccion.textos(pa)}
     html = (AQUI / "plantilla.html").read_text()
     html = html.replace("/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
     Path(salida).parent.mkdir(parents=True, exist_ok=True)
