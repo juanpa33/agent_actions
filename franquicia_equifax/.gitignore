@@ -2,3 +2,6 @@
 *.xlsx
 datos/
 salida/
+*.pdf
+# Rutas locales y mails de destinatarios
+config/informe.json

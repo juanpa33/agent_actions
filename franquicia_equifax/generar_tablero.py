@@ -277,6 +277,17 @@ def main(entrada: str, salida: str) -> None:
     html = html.replace("/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
     Path(salida).parent.mkdir(parents=True, exist_ok=True)
     Path(salida).write_text(html)
+    # Resumen corto para el cuerpo del mail del informe mensual.
+    ult = [m for m in datos["meses"] if m.get("ingreso")][-1]
+    resumen = {
+        "ultimo_mes": ult["etiqueta"], "ingreso_ultimo": ult["ingreso"], "gastos_ultimo": ult["total_gastos"],
+        "socios_ultimo": ult["neto_socios"], "periodo_12m": f"{a['l12_desde']} a {a['l12_hasta']}",
+        "ingreso_12m": a["tot12"]["ingreso"], "gastos_12m": a["tot12"]["total_gastos"], "socios_12m": a["tot12"]["neto_socios"],
+        "equilibrio": a["equilibrio"], "crec_real": a["crec_real"],
+        "prospeccion": {k: payload["prospeccion"]["total"][k] for k in ("llamadas", "interesados", "cerrados", "por_cerrar")}
+        if payload["prospeccion"] else None,
+    }
+    (Path(salida).parent / "resumen.json").write_text(json.dumps(resumen, ensure_ascii=False, indent=1))
     print(f"Tablero -> {salida}")
     print(f"  12m: ingreso {M(a['tot12']['ingreso'])}, gastos {M(a['tot12']['total_gastos'])}, socios {M(a['tot12']['neto_socios'])}")
     print(f"  equilibrio {M(a['equilibrio'])}/mes, CV {pct(a['cv12'])}, crecimiento real {pct(a['crec_real'])}")

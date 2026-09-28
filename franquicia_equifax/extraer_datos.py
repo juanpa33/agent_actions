@@ -252,10 +252,40 @@ def pagado_a_socios(ws) -> dict:
     return out
 
 
+NOMBRES_MES = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+               "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12}
+NO_SON_MESES = {"Pagado a socios", "Meses anteriores"}
+
+
+def hojas_nuevas(wb) -> dict:
+    """Detecta hojas agregadas después de escribir HOJAS, para no tener que tocar el código cada mes.
+
+    Toma el mes del primer nombre de la hoja ("Octubre (septiembre)") y el año siguiente al último
+    conocido. Las ventas se asumen del mes anterior. Imprime un aviso para que se revise.
+    """
+    ultimo = max(v[0] for v in HOJAS.values())
+    anio, mes_ult = int(ultimo[:4]), int(ultimo[5:])
+    nuevas = {}
+    for nombre in wb.sheetnames:
+        if nombre in HOJAS or nombre in NO_SON_MESES:
+            continue
+        m = re.match(r"\s*([a-záéíóú]+)", nombre.lower())
+        n = NOMBRES_MES.get(m.group(1)) if m else None
+        if not n or str(wb[nombre]["A5"].value or "").strip() == "":
+            print(f"  aviso: la hoja '{nombre}' no se reconoce como liquidación; se ignora.")
+            continue
+        a = anio if n >= mes_ult else anio + 1
+        mes = f"{a}-{n:02d}"
+        va, vn = (a, n - 1) if n > 1 else (a - 1, 12)
+        nuevas[nombre] = (mes, f"{va}-{vn:02d}", "Hoja detectada automáticamente: revisar mes y rubros.")
+        print(f"  aviso: hoja nueva '{nombre}' -> liquidación {mes}. Si es correcto, agregala a HOJAS.")
+    return nuevas
+
+
 def main(xlsx: str, salida: str) -> None:
     wb = openpyxl.load_workbook(xlsx, data_only=True)
     registros: dict[str, dict] = {}
-    for hoja, (mes, venta, nota) in HOJAS.items():
+    for hoja, (mes, venta, nota) in {**HOJAS, **hojas_nuevas(wb)}.items():
         ws = wb[hoja]
         d = mayo_2025(ws) if hoja == "Mayo (abril)" else parse_hoja(ws)
         d.update({"hoja": hoja, "mes": mes, "venta": venta, "nota": nota})

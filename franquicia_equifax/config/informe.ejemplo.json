@@ -1,0 +1,18 @@
+{
+  "_ayuda": "Copiá este archivo como config/informe.json (no se sube al repositorio) y completá las rutas y los mails.",
+  "excel_liquidaciones": "~/Descargas/Calculo_transferencias_Virtus.xlsx",
+  "excel_prospeccion": "~/Descargas/PROSPECCION.xlsx",
+  "anio_prospeccion": 2026,
+  "envio": {
+    "remitente": "informes@tu-dominio.com.ar",
+    "destinatarios": ["socio1@ejemplo.com", "socio2@ejemplo.com"],
+    "copia": [],
+    "asunto": "Informe mensual Virtus · liquidación {mes}",
+    "smtp": {
+      "host": "smtp.gmail.com",
+      "port": 587,
+      "usuario": "informes@tu-dominio.com.ar",
+      "variable_password": "VIRTUS_SMTP_PASSWORD"
+    }
+  }
+}

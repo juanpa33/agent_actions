@@ -127,6 +127,53 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
 @media (max-width: 600px) { dl.glos { grid-template-columns: 1fr; } dl.glos dd { margin-bottom: 8px; } .kpi .val { font-size: 24px; } }
 @media (max-width: 600px) { header.top { position: static; } }
 @media print { header.top { position: static; } .controls { display: none; } }
+/* ---------- Modo PDF (?pdf): A4, sin interacción, ambas pestañas ---------- */
+.portada { display: none; }
+body.pdf { background: #fff; font-size: 12.5px; line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body.pdf { --surface: #ffffff; --page: #ffffff; }
+body.pdf header.top, body.pdf nav.toc, body.pdf .tip, body.pdf summary, body.pdf #selMesWrap { display: none !important; }
+body.pdf .wrap { max-width: none; padding: 0; }
+body.pdf main[hidden] { display: block !important; }
+body.pdf #tabPros { break-before: page; }
+body.pdf h1 { font-size: 22px; margin: 0 0 4px; }
+body.pdf h2 { font-size: 16px; margin: 20px 0 3px; break-after: avoid; }
+body.pdf h3 { font-size: 13px; }
+body.pdf p.lead { font-size: 12.5px; margin-bottom: 8px; max-width: none; }
+body.pdf .card { padding: 10px 12px; border-radius: 8px; break-inside: avoid; }
+body.pdf .grid { gap: 8px; }
+body.pdf .kpis { grid-template-columns: repeat(3, 1fr); }
+body.pdf .kpi .val { font-size: 21px; }
+body.pdf .kpi details { font-size: 11px; margin-top: 4px; }
+body.pdf .explica, body.pdf .aviso { font-size: 12px; padding: 8px 10px; break-inside: avoid; }
+body.pdf .steps li { font-size: 12px; padding-top: 3px; padding-bottom: 4px; }
+body.pdf .idea p, body.pdf .concl p, body.pdf .num-list p { font-size: 12px; }
+body.pdf .ideas { grid-template-columns: 1fr 1fr; }
+body.pdf .scroll { overflow: visible; }
+body.pdf table { font-size: 10px; }
+body.pdf th, body.pdf td { padding: 3px 4px; }
+body.pdf th { white-space: normal; }
+body.pdf .heat td.c { min-width: 0; }
+body.pdf #tablaTodo { font-size: 8.5px; }
+body.pdf dl.glos { font-size: 12px; }
+body.pdf footer { margin-top: 16px; }
+body.pdf .salto { break-before: page; }
+body.pdf .two { grid-template-columns: 1.3fr 1fr; }
+body.pdf #datos .two { grid-template-columns: 1fr; }
+body.pdf footer { display: none; }
+body.pdf .concl .card, body.pdf .num-list .card { padding-left: 38px; }
+body.pdf .concl .card::before, body.pdf .num-list .card::before { left: 12px; top: 9px; font-size: 17px; }
+.portada .clave { font-size: 12.5px; margin: 0 0 18px; padding-left: 18px; }
+.portada .clave li { margin-bottom: 4px; }
+body.pdf .portada { display: flex; flex-direction: column; justify-content: space-between; height: 265mm; break-after: page; }
+.portada .marca { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--s1); font-weight: 700; }
+.portada h1 { font-size: 34px !important; line-height: 1.1; margin: 14px 0 8px !important; }
+.portada .sub { font-size: 15px; color: var(--ink-2); }
+.portada .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; margin: 28px 0; }
+.portada .hero div { border-top: 3px solid var(--s1); padding-top: 8px; }
+.portada .hero b { display: block; font-size: 26px; }
+.portada .hero span { font-size: 12px; color: var(--ink-2); }
+.portada ol { font-size: 13px; color: var(--ink-2); columns: 2; padding-left: 18px; }
+.portada .pie { font-size: 11px; color: var(--muted); border-top: 1px solid var(--grid); padding-top: 8px; }
 </style>
 </head>
 <body>
@@ -145,6 +192,7 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
   </div>
 </div></header>
 
+<div class="portada wrap" id="portada"></div>
 <main class="wrap" id="tabFin" role="tabpanel">
   <h1>Tablero de control del negocio</h1>
   <p class="lead">Cada mes Equifax transfiere a Virtus la comisión por lo que se vendió en Cuyo. De ahí se pagan los gastos, se aparta un fondo de resguardo
@@ -166,7 +214,8 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
     <h2>2. Un mes, paso a paso</h2>
     <p class="lead">Elegí un mes para ver cómo la comisión de Equifax se convierte en la transferencia a cada socio. Cada escalón de la cascada es un descuento.</p>
     <div class="card">
-      <label>Mes de liquidación: <select id="selMes"></select></label>
+      <label id="selMesWrap">Mes de liquidación: <select id="selMes"></select></label>
+      <h3 id="mesPdf" style="display:none"></h3>
       <div class="grid two" style="margin-top:12px">
         <div><div class="chart" id="cascada"></div></div>
         <div><ol class="steps" id="pasos"></ol></div>
@@ -372,7 +421,9 @@ dl.glos dd { margin: 0; color: var(--ink-2); }
 <script>
 const D = /*__DATA__*/null;
 const S = { real: false };
-try { const t = localStorage.getItem('virtus-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+const PDF = new URLSearchParams(location.search).has('pdf');
+if (PDF) { document.documentElement.dataset.theme = 'light'; document.body.classList.add('pdf'); }
+else try { const t = localStorage.getItem('virtus-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
 
 // ---------- utilidades ----------
 const $ = s => document.querySelector(s);
@@ -814,12 +865,12 @@ function renderPros() {
   });
 
   // Día de la semana con intervalo de confianza
-  const dw = P.por_dow, hs = 250, gs = svgFor('pSemana', hs), L = 40, R = 10, T = 14, B = 42, pw = gs.w - L - R, ph = hs - T - B;
+  const dw = P.por_dow, hs = 250, gs = svgFor('pSemana', hs), L = 40, R = 58, T = 14, B = 42, pw = gs.w - L - R, ph = hs - T - B;
   const smax = niceMax(Math.max(...dw.map(x => x.ic_interes[1])) * 100);
   yAxis(gs.svg, L, gs.w - R, T + ph, T, smax, v => v.toFixed(0), smax % 5 === 0 ? 5 : 4);
   const sy = v => T + ph - ph * v / smax, bw = pw / dw.length, avg = t.interes_por_llamada * 100;
   el('line', { x1: L, x2: gs.w - R, y1: sy(avg), y2: sy(avg), stroke: 'var(--muted)', 'stroke-dasharray': '4 4' }, gs.svg);
-  text(gs.svg, gs.w - R, sy(avg) - 5, `promedio ${avg.toFixed(0)}`, 'lbl-sm', 'end');
+  text(gs.svg, gs.w - R + 4, sy(avg) + 4, `promedio ${avg.toFixed(0)}`, 'lbl-sm', 'start');
   dw.forEach((x, i) => {
     const v = x.interes_por_llamada * 100, cx2 = L + i * bw + bw / 2, wi = Math.min(46, bw * 0.55);
     el('path', { d: barPath(cx2 - wi / 2, sy(v), wi, T + ph - sy(v)), fill: 'var(--s1)' }, gs.svg);
@@ -872,8 +923,52 @@ $('#bTema').onclick = () => {
 };
 const activo = () => $('#tabPros').hidden ? renderAll() : renderPros();
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(activo, 150); });
-renderMesSelect(); renderAll();
-if (location.hash === '#prospeccion' || location.hash.startsWith('#p-')) tab('pros');
+renderMesSelect();
+if (PDF) modoPdf();
+else {
+  renderAll();
+  if (location.hash === '#prospeccion' || location.hash.startsWith('#p-')) tab('pros');
+}
+
+// ---------- exportación a PDF ----------
+function modoPdf() {
+  $('#tabPros').hidden = false;
+  renderAll();
+  // "Un mes paso a paso": siempre el último mes.
+  $('#mesPdf').style.display = ''; $('#mesPdf').textContent = `Mes de liquidación: ${ultimo.etiqueta}`;
+  // Mapa de calor: una tabla por año, una debajo de la otra.
+  const anios = [...new Set(conDetalle.map(m => m.mes.slice(0, 4)))];
+  let html = '';
+  anios.forEach(y => { S.anio = y; renderCostos(); html += `<h3 style="margin:10px 0 4px">${y}</h3><table class="heat">${$('#heat').innerHTML}</table>`; });
+  $('#heat').closest('.scroll').innerHTML = html;
+  $('#heatAnios').parentElement.remove();
+  if (D.prospeccion) renderPros(); else $('#tabPros').remove();
+  document.querySelectorAll('details').forEach(d => d.open = true);
+  // Saltos de página antes de los bloques grandes.
+  ['#mes', '#evolucion', '#apalancamiento', '#costos', '#socios', '#conclusiones', '#datos', '#p-diario', '#p-patrones', '#p-bench'].forEach(sel => $(sel)?.classList.add('salto'));
+  const claves = D.conclusiones.slice(0, 5).map(c => c[0]).concat(D.ideas.filter(i => i[2] === 'Alta').slice(0, 3).map(i => `Idea: ${i[0].toLowerCase()}`));
+  const a = D.analisis, t = D.prospeccion?.total;
+  const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('#portada').innerHTML = `<div>
+    <div class="marca">Virtus · Franquicia Equifax Cuyo</div>
+    <h1>Informe mensual de gestión</h1>
+    <div class="sub">Liquidación de ${ultimo.etiqueta} · últimos 12 meses: ${a.l12_desde} a ${a.l12_hasta}</div>
+    <div class="hero">
+      <div><b>${fM(ultimo.ingreso)}</b><span>cobrado de Equifax en ${ultimo.etiqueta}</span></div>
+      <div><b>${fM(ultimo.neto_socios)}</b><span>repartido a socios en ${ultimo.etiqueta} (${fP(ultimo.neto_socios / ultimo.ingreso)} de lo cobrado)</span></div>
+      <div><b>${fM(a.tot12.ingreso)}</b><span>cobrado en 12 meses · ${fM(a.tot12.neto_socios)} a socios</span></div>
+      <div><b>${fM(a.equilibrio)}</b><span>punto de equilibrio mensual · estructura fija ${fM(a.fijos_ult)}</span></div>
+      <div><b>${(a.crec_real >= 0 ? '+' : '') + fP(a.crec_real)}</b><span>crecimiento real del cobro (primer vs. último semestre)</span></div>
+      ${t ? `<div><b>${t.llamadas.toFixed(0)} llamadas</b><span>${t.interesados.toFixed(0)} interesados · ${t.cerrados.toFixed(0)} altas + ${t.por_cerrar.toFixed(0)} por cerrar</span></div>` : ''}
+    </div>
+    <h3>Puntos clave</h3>
+    <ul class="clave">${claves.map(c => `<li>${c}</li>`).join('')}</ul>
+    <h3>Contenido</h3>
+    <ol><li>Resumen</li><li>Un mes paso a paso</li><li>Evolución mensual</li><li>Punto de equilibrio</li><li>Estructura de costos</li><li>Socios</li><li>Conclusiones</li><li>Ideas de optimización</li><li>Comparación con negocios parecidos</li><li>Datos y glosario</li>${t ? '<li>Prospección telefónica</li>' : ''}</ol>
+  </div>
+  <div class="pie">Generado el ${hoy} a partir del Excel de liquidaciones${t ? ' y la planilla de prospección' : ''}. Montos en pesos de cada mes, sin ajustar por inflación. Documento interno: contiene información financiera privada de la sociedad.</div>`;
+  document.body.dataset.listo = '1';
+}
 </script>
 </body>
 </html>
