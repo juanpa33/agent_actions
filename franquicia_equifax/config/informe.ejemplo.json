@@ -1,5 +1,10 @@
 {
-  "_ayuda": "Copiá este archivo como config/informe.json (no se sube al repositorio) y completá las rutas y los mails.",
+  "_ayuda": "Copiá este archivo como config/informe.json (no se sube al repositorio). Si completás 'drive', las planillas se bajan solas de Google Drive y las rutas 'excel_*' se ignoran.",
+  "drive": {
+    "liquidaciones": "ID_DE_LA_PLANILLA_Calculo_transferencias_Virtus",
+    "prospeccion": "ID_DE_LA_PLANILLA_PROSPECCION"
+  },
+  "credenciales_google": "~/.config/virtus/cuenta-servicio.json",
   "excel_liquidaciones": "~/Descargas/Calculo_transferencias_Virtus.xlsx",
   "excel_prospeccion": "~/Descargas/PROSPECCION.xlsx",
   "anio_prospeccion": 2026,

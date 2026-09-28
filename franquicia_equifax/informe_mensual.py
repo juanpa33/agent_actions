@@ -91,6 +91,19 @@ def main() -> None:
     datos = AQUI / "datos"
     salida = AQUI / "salida"
 
+    # Si hay IDs de Drive, se bajan las planillas vivas y reemplazan a las rutas locales.
+    drive = cfg.get("drive") or {}
+    if any(drive.values()):
+        import descargar_drive
+        print("0/4 Descargando planillas de Google Drive...")
+        tk = descargar_drive.token(cfg["credenciales_google"])
+        if drive.get("liquidaciones"):
+            descargar_drive.descargar(drive["liquidaciones"], str(datos / "drive_liquidaciones.xlsx"), tk)
+            cfg["excel_liquidaciones"] = str(datos / "drive_liquidaciones.xlsx")
+        if drive.get("prospeccion"):
+            descargar_drive.descargar(drive["prospeccion"], str(datos / "drive_prospeccion.xlsx"), tk)
+            cfg["excel_prospeccion"] = str(datos / "drive_prospeccion.xlsx")
+
     print("1/4 Leyendo liquidaciones...")
     extraer_datos.main(os.path.expanduser(cfg["excel_liquidaciones"]), str(datos / "virtus_mensual.json"))
     if cfg.get("excel_prospeccion"):

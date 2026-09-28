@@ -35,6 +35,12 @@ El PDF es A4, en tema claro. Trae una portada con los números del mes, las dos 
 completas (Finanzas y Prospección), el mapa de calor de cada año y las explicaciones desplegadas.
 También se puede exportar solo el PDF de un tablero ya generado: `python exportar_pdf.py`.
 
+**Planillas desde Google Drive.** Si en `config/informe.json` completás `drive` con los IDs de las
+planillas y `credenciales_google` con la clave de una cuenta de servicio, el informe baja solo la
+versión vigente de cada planilla (Google Sheets se exporta a .xlsx). Hace falta `pip install google-auth`
+y compartir las planillas con el mail de la cuenta de servicio como *Lector*. Los pasos están en
+`descargar_drive.py`.
+
 **Envío por mail.** Completá `envio` en `config/informe.json` (remitente, destinatarios, SMTP)
 y definí la contraseña en la variable de entorno `VIRTUS_SMTP_PASSWORD`. Nunca va en el archivo.
 Con Gmail, usá una *contraseña de aplicación*. Sin `--enviar` solo muestra una vista previa del mail.
