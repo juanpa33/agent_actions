@@ -1,5 +1,7 @@
 # Agente revisor de acciones — NVIDIA, YPF y top 10 del NASDAQ
 
+> **Nuevo:** [`hotel_data_sim/`](hotel_data_sim/README.md) — simulador de un producto de datos para hoteles LATAM (ingesta, lago, tablero, asistente y agente de pricing). Es independiente del agente de acciones de abajo.
+
 Sistema de análisis cuantitativo que descarga precios reales, calcula señales con
 respaldo académico, las backtestea sin sesgo de anticipación y —lo más
 importante— **te dice cuándo el resultado no es estadísticamente distinguible de

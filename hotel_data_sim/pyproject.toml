@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hotelsim"
+version = "0.1.0"
+description = "Simulador MVP de producto de datos para hoteles LATAM: ingesta, medallion, reporting, asistente y agente de pricing"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "pyarrow>=15",
+  "duckdb>=1.0",
+]
+
+[project.optional-dependencies]
+llm = ["anthropic>=1.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+hotelsim = "hotelsim.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+hotelsim = ["*.html"]
