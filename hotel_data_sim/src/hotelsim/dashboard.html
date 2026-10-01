@@ -93,7 +93,7 @@ details summary { cursor: pointer; color: var(--text2); font-size: 12px; margin-
     <div class="card"><h2>ADR</h2><div class="hint">Tarifa media de las noches vendidas (USD). Futuro = lo ya reservado. Media móvil 7 días</div><div id="c-adr"></div></div>
   </section>
   <section class="grid2">
-    <div class="card"><h2>Recomendaciones del agente de pricing</h2><div class="hint">Próximos 30 días, mayor impacto primero. Son <b>sugerencias</b>: nada se publica sin aprobación humana</div><div class="scroll" id="recs"></div></div>
+    <div class="card" style="grid-column: 1 / -1"><h2>Recomendaciones del agente de pricing</h2><div class="hint">Próximos 30 días, mayor impacto primero. Son <b>sugerencias</b>: nada se publica sin aprobación humana</div><div class="scroll" id="recs"></div></div>
     <div class="card"><h2>Pendientes de aprobación</h2><div class="hint" id="pendhint"></div><div class="scroll" id="pending"></div><div class="bar" id="approvebar" style="margin-top:8px"></div></div>
   </section>
   <section class="grid2">
@@ -127,6 +127,7 @@ const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v
 const fmt = { pct: (v) => (v == null ? "–" : (v * 100).toFixed(0) + "%"), usd: (v) => (v == null ? "–" : "$" + Math.round(v).toLocaleString("es-AR")), n: (v) => Math.round(v).toLocaleString("es-AR"), x2: (v) => (v == null ? "–" : v.toFixed(2)) };
 const hotelName = Object.fromEntries(DATA.hotels.map((h) => [h.hotel_id, h.city === "Ciudad de México" ? "CDMX" : h.city]));
 let hotel = "ALL";
+DATA.published = DATA.published || [];
 
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.style.display = "block"; setTimeout(() => (t.style.display = "none"), 3500); }
 function dshort(s) { return s.slice(8, 10) + "/" + s.slice(5, 7); }
@@ -208,17 +209,20 @@ function tableHtml(cols, rows, empty = "Sin datos") {
   return `<table><tr>${cols.map((c) => `<th class="${c.n ? "n" : ""}">${c.h}</th>`).join("")}</tr>${rows.map((r) => `<tr>${cols.map((c) => `<td class="${c.n ? "n" : ""}">${c.f ? c.f(r) : esc(r[c.k])}</td>`).join("")}</tr>`).join("")}</table>`;
 }
 function recs() {
-  const rows = DATA.recs.filter((r) => hotelsSel().includes(r.hotel_id));
+  const rows = DATA.recs.filter((r) => hotelsSel().includes(r.hotel_id)).slice(0, 12);
+  const isPub = (r) => DATA.published.some((p) => p.hotel_id === r.hotel_id && p.room_type === r.room_type && p.stay_date === r.stay_date);
   $("recs").innerHTML = tableHtml([{ h: "Hotel", f: (r) => hotelName[r.hotel_id] }, { h: "Hab.", k: "room_type" }, { h: "Fecha", f: (r) => dshort(r.stay_date) }, { h: "Precio", n: 1, f: (r) => `${fmt.usd(r.current_usd)} → <b>${fmt.usd(r.new_usd)}</b>` },
-    { h: "Δ", n: 1, f: (r) => (r.change_pct > 0 ? "▲" : "▼") + Math.abs(r.change_pct * 100).toFixed(0) + "%" }, { h: "Ocup. proy.", n: 1, f: (r) => fmt.pct(r.proj_occ) }, { h: "Por qué", f: (r) => `<span title="${esc(r.reasons.join("; "))}">${esc(r.reasons[0].slice(0, 38))}${r.reasons.length > 1 ? " +" + (r.reasons.length - 1) : ""}</span>` }], rows);
+    { h: "Δ", n: 1, f: (r) => (r.change_pct > 0 ? "▲" : "▼") + Math.abs(r.change_pct * 100).toFixed(0) + "%" }, { h: "Ocup. proy.", n: 1, f: (r) => fmt.pct(r.proj_occ) }, { h: "Estado", f: (r) => (isPub(r) ? "✓ publicada (sim.)" : DATA.pending.some((p) => p.hotel_id === r.hotel_id && p.room_type === r.room_type && p.stay_date === r.stay_date) ? "⏳ pendiente" : "sugerida") }, { h: "Por qué", f: (r) => `<span title="${esc(r.reasons.join("; "))}">${esc(r.reasons[0].slice(0, 38))}${r.reasons.length > 1 ? " +" + (r.reasons.length - 1) : ""}</span>` }], rows);
 }
 function pending() {
   const rows = DATA.pending.filter((r) => hotelsSel().includes(r.hotel_id));
-  $("pendhint").textContent = LIVE ? "Una persona revisa y aprueba. Al aprobar se publica (simulado) en Booking, Expedia, Despegar y motor propio con la misma tarifa." : "Disponible en modo interactivo (hotelsim serve).";
-  $("pending").innerHTML = tableHtml([{ h: "", f: (r) => (LIVE ? `<input type="checkbox" class="pk" value="${r.id}" checked>` : "") }, { h: "Hotel", f: (r) => hotelName[r.hotel_id] }, { h: "Hab.", k: "room_type" }, { h: "Fecha", f: (r) => dshort(r.stay_date) },
+  $("pendhint").textContent = "Una persona revisa y aprueba. Al aprobar se publica (simulado) en Booking, Expedia, Despegar y motor propio con la misma tarifa.";
+  $("pending").innerHTML = tableHtml([{ h: "", f: (r) => `<input type="checkbox" class="pk" value="${r.id}" checked>` }, { h: "Hotel", f: (r) => hotelName[r.hotel_id] }, { h: "Hab.", k: "room_type" }, { h: "Fecha", f: (r) => dshort(r.stay_date) },
     { h: "Precio", n: 1, f: (r) => `${fmt.usd(r.current_usd)} → <b>${fmt.usd(r.new_usd)}</b>` }], rows, "No hay propuestas pendientes. Pedile al agente que las proponga.");
-  $("approvebar").innerHTML = LIVE && rows.length ? `<input id="who" placeholder="Tu nombre (obligatorio)"><button class="primary" id="approve">Aprobar seleccionadas</button><button id="reject">Rechazar</button>` : "";
-  if (LIVE && rows.length) { $("approve").onclick = () => decide("approve"); $("reject").onclick = () => decide("reject"); }
+  $("approvebar").innerHTML = rows.length ? `<input id="who" placeholder="Tu nombre (obligatorio)"><button class="primary" id="approve">Aprobar seleccionadas</button><button id="reject">Rechazar</button>` : "";
+  if (rows.length) { $("approve").onclick = () => decide("approve"); $("reject").onclick = () => decide("reject"); }
+  const pub = DATA.published.filter((r) => hotelsSel().includes(r.hotel_id));
+  if (pub.length) $("pending").innerHTML += `<div class="hint" style="margin-top:10px"><b>Publicadas (simulado)</b> — enviadas a Booking, Expedia, Despegar y motor propio con la misma tarifa</div>` + tableHtml([{ h: "Hotel", f: (r) => hotelName[r.hotel_id] }, { h: "Hab.", k: "room_type" }, { h: "Fecha", f: (r) => dshort(r.stay_date) }, { h: "Precio", n: 1, f: (r) => `${fmt.usd(r.current_usd)} → <b>${fmt.usd(r.new_usd)}</b>` }, { h: "Aprobó", k: "by" }], pub);
 }
 function mix() {
   const rows = DATA.mix.filter((r) => hotelsSel().includes(r.hotel_id)); const agg = {};
@@ -241,7 +245,7 @@ function health() {
 function renderAll() {
   const H = DATA.hotels.find((h) => h.hotel_id === hotel);
   $("asof").textContent = `Datos al ${DATA.as_of} (reloj de la simulación) · ${DATA.hotels.length} hoteles · PMS: ${[...new Set(DATA.hotels.map((h) => h.pms))].join(", ")} + channel manager + rate shopper`;
-  $("simnote").innerHTML = "Hoteles, tarifas, eventos y reservas son <b>ficticios</b>. Sirve para probar cómo se ve un producto de datos integrado; no describe ningún hotel real ni el mercado.";
+  $("simnote").innerHTML = "Hoteles, tarifas, eventos y reservas son <b>ficticios</b>. Sirve para probar cómo se ve un producto de datos integrado; no describe ningún hotel real ni el mercado." + (LIVE ? "" : " <b>Versión demo:</b> corre sola en el navegador con datos precalculados. Podés conversar y aprobar precios (simulado); la simulación en vivo y Claude requieren <code>hotelsim serve</code>.");
   tiles(); charts(); recs(); pending(); mix(); parity(); health();
 }
 
@@ -254,6 +258,11 @@ async function decide(kind) {
   const ids = [...document.querySelectorAll(".pk:checked")].map((x) => x.value), who = $("who").value.trim();
   if (!ids.length) return toast("Elegí al menos una propuesta");
   if (!who) return toast("Poné tu nombre: la aprobación es de una persona");
+  if (!LIVE) {
+    const keep = []; let n = 0;
+    DATA.pending.forEach((p) => { if (ids.includes(p.id)) { n++; if (kind === "approve") DATA.published.push({ ...p, by: who }); } else keep.push(p); });
+    DATA.pending = keep; toast(kind === "approve" ? `Publicadas ${n} (simulado) · aprobó ${who}` : `Rechazadas ${n}`); return renderAll();
+  }
   try { const r = await api("/api/" + kind, { ids, user: who }); toast(kind === "approve" ? `Publicadas ${r.published.length} (simulado). Fallidas: ${r.failed.length}` : `Rechazadas ${r.rejected}`); await reload(); } catch (e) { toast(e.message); }
 }
 async function reload() { const r = await fetch("/api/state"); Object.assign(DATA, await r.json()); renderAll(); }
@@ -276,21 +285,76 @@ const CHIPS = { assistant: ["¿Cómo vino septiembre?", "¿Cómo viene el ritmo 
 function chips() { $("chips").innerHTML = CHIPS[$("mode").value].map((c) => `<button type="button">${esc(c)}</button>`).join(""); [...$("chips").children].forEach((b) => (b.onclick = () => { $("q").value = b.textContent; $("form").requestSubmit(); })); }
 async function send(text) {
   addMsg("u", esc(text)); const wait = addMsg("a", "<i>pensando…</i>");
-  try { const r = await api("/api/chat", { session: SESSION, mode: $("mode").value, message: text }); wait.remove(); addMsg("a", md(r.text), r.tools.join(", ")); if (r.tools.includes("propose_price_changes")) await reload(); }
+  try { const r = LIVE ? await api("/api/chat", { session: SESSION, mode: $("mode").value, message: text }) : demoAsk($("mode").value, text); wait.remove(); addMsg("a", md(r.text), r.tools.join(", ")); if (LIVE && r.tools.includes("propose_price_changes")) await reload(); }
   catch (e) { wait.remove(); addMsg("a", esc("Error: " + e.message)); }
+}
+
+
+/* ---------- motor de conversación del DEMO (reglas fijas en el navegador, sin servidor ni IA) ---------- */
+const nrm = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const HW = { MDZ01: ["mdz01", "mendoza", "vinedos", "lujan"], CTG01: ["ctg01", "cartagena", "getsemani"], MEX01: ["mex01", "mexico", "cdmx", "reforma"] };
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const pickHotel = (t) => Object.keys(HW).find((h) => HW[h].some((w) => t.includes(w)));
+const mdT = (cols, rows) => !rows.length ? "_(sin datos)_" : "| " + cols.map((c) => c[1]).join(" | ") + " |\n|" + cols.map(() => "---|").join("") + "\n" + rows.map((r) => "| " + cols.map((c) => (typeof c[0] === "function" ? c[0](r) : r[c[0]])).join(" | ") + " |").join("\n");
+function demoAsk(mode, text) {
+  const t = nrm(text), hid = pickHotel(t), hs = hid ? [hid] : DATA.hotels.map((h) => h.hotel_id), agent = mode === "agent", tools = [];
+  const dm = t.match(/(\d+)\s*dias/), days = dm ? Math.max(1, Math.min(60, +dm[1])) : 30, today = new Date(DATA.today + "T00:00:00");
+  const inH = (r) => hs.includes(r.hotel_id), within = (d) => (new Date(d + "T00:00:00") - today) / 864e5 <= days;
+  const out = (txt, tl) => ({ text: txt, tools: tl || tools });
+  const R = (rows) => rows.filter((r) => inH(r) && within(r.stay_date));
+  const NOTE = "\n\n_(Demo en el navegador: reglas fijas sobre los datos incrustados. Con el servidor y una API key, el asistente usa Claude y entiende preguntas libres.)_";
+  const pending = () => DATA.pending, keyOf = (r) => r.hotel_id + r.room_type + r.stay_date;
+  if (agent && /propon|propone|proponer|aprobacion|cola/.test(t) && !/pendiente/.test(t)) {
+    const have = new Set([...DATA.pending, ...DATA.published].map(keyOf)), cand = R(DATA.recs).filter((r) => Math.abs(r.change_pct) >= 0.04 && !have.has(keyOf(r))).slice(0, 15);
+    if (!cand.length) return out("No hay cambios nuevos con señal suficiente para proponer." + NOTE, ["recommend_prices"]);
+    cand.forEach((r) => DATA.pending.push({ id: Math.random().toString(16).slice(2, 10), status: "propuesto", hotel_id: r.hotel_id, room_type: r.room_type, stay_date: r.stay_date, current_usd: r.current_usd, new_usd: r.new_usd, reasons: r.reasons }));
+    renderAll();
+    return out(`Dejé **${cand.length} propuestas** en la cola. **Nada se publicó**: una persona tiene que aprobarlas (panel _Pendientes de aprobación_, con su nombre).\n\n` + mdT([["hotel_id", "Hotel"], ["room_type", "Hab."], ["stay_date", "Fecha"], [(r) => fmt.usd(r.current_usd), "Actual"], [(r) => fmt.usd(r.new_usd), "Propuesto"]], cand) + NOTE, ["recommend_prices", "propose_price_changes"]);
+  }
+  if (agent && /pendiente/.test(t)) return out(`**Pendientes de aprobación humana: ${pending().length}**\n\n` + mdT([["hotel_id", "Hotel"], ["room_type", "Hab."], ["stay_date", "Fecha"], [(r) => fmt.usd(r.current_usd), "Actual"], [(r) => fmt.usd(r.new_usd), "Propuesto"]], pending().slice(0, 20)) + NOTE, ["list_pending"]);
+  if (/recomend|precio|tarifa|subir|bajar|pricing|revenue|yield/.test(t)) {
+    if (!agent) return out("Las recomendaciones de precio las genera el **agente de pricing** (cambiá el modo arriba). Desde el asistente puedo mostrarte KPIs, ritmo de reservas, competencia, paridad y canales." + NOTE, []);
+    const rows = R(DATA.recs).slice(0, 12);
+    return out(`**Recomendaciones de precio** (mayor impacto primero)\n\n` + mdT([["hotel_id", "Hotel"], ["room_type", "Hab."], ["stay_date", "Fecha"], [(r) => fmt.usd(r.current_usd), "Actual"], [(r) => fmt.usd(r.new_usd), "Sugerido"], [(r) => (r.change_pct > 0 ? "+" : "") + (r.change_pct * 100).toFixed(0) + "%", "Cambio"], [(r) => fmt.pct(r.proj_occ), "Ocup. proy."], ["confidence", "Confianza"]], rows) +
+      "\nPor qué, en los primeros casos:\n" + rows.slice(0, 4).map((r) => `- ${r.hotel_id} ${r.room_type} ${r.stay_date}: ${r.reasons.join("; ")}`).join("\n") + "\n\nDecime «proponé los cambios» y los dejo en la cola para que una persona los apruebe." + NOTE, ["recommend_prices"]);
+  }
+  if (/paridad|parity/.test(t)) { const p = DATA.parity.filter(inH); return out("**Paridad de tarifas (OTA vs. directo)**\n\n" + mdT([["hotel_id", "Hotel"], ["channel", "Canal"], ["fechas", "Fechas"], ["con_diferencia", "Con diferencia >1%"]], p) + "\n\nPrimeras fechas:\n\n" + mdT([["hotel_id", "Hotel"], ["room_type", "Hab."], ["stay_date", "Fecha"], ["channel", "Canal"], [(r) => (r.diff_pct * 100).toFixed(1) + "%", "Dif."]], DATA.parity_rows.filter(inH).slice(0, 8)) + NOTE, ["parity_alerts"]); }
+  if (/canal|booking|expedia|despegar|comision/.test(t)) { const rows = DATA.mix.filter(inH); return out("**Mezcla de canales, últimos 3 meses** (USD)\n\n" + mdT([["hotel_id", "Hotel"], ["channel", "Canal"], [(r) => fmt.n(r.room_nights), "Noches"], [(r) => fmt.usd(r.gross_usd), "Bruto"], [(r) => fmt.usd(r.net_usd), "Neto de comisión"], [(r) => fmt.usd(r.net_usd / r.room_nights), "ADR neto"]], rows) + NOTE, ["channel_mix"]); }
+  if (/competen|compset|mercado|rate shop/.test(t)) {
+    const rows = hs.map((h) => { const c = R(DATA.comp).filter((r) => r.hotel_id === h && r.rate_index != null); const avg = (k) => c.reduce((a, r) => a + r[k], 0) / c.length; return { hotel_id: h, idx: avg("rate_index"), ours: avg("our_bar_usd"), comp: avg("comp_median_usd") }; });
+    return out("**Posición de precio vs. competencia** (tipo Standard; índice >1 = más caro que la mediana)\n\n" + mdT([["hotel_id", "Hotel"], [(r) => r.idx.toFixed(2), "Índice prom."], [(r) => fmt.usd(r.ours), "Nuestra BAR"], [(r) => fmt.usd(r.comp), "Mediana comp."]], rows) + NOTE, ["compset"]);
+  }
+  if (/pickup|ritmo|pace|reservas|on the books|otb/.test(t)) {
+    const rows = hs.map((h) => { const c = R(DATA.pace).filter((r) => r.hotel_id === h), s = (k) => c.reduce((a, r) => a + r[k], 0); return { hotel_id: h, occ: s("otb") / s("capacity"), otb: s("otb"), ly: s("otb_stly"), pace: s("otb") / s("otb_stly"), p7: s("pickup_7d") }; });
+    return out(`**Ritmo de reservas, próximos ${days} días** vs. mismo momento del año pasado\n\n` + mdT([["hotel_id", "Hotel"], [(r) => fmt.pct(r.occ), "Ocup. reservada"], [(r) => fmt.n(r.otb), "Noches OTB"], [(r) => fmt.n(r.ly), "OTB año pasado"], [(r) => r.pace.toFixed(2) + "×", "Ritmo"], [(r) => (r.p7 >= 0 ? "+" : "") + fmt.n(r.p7), "Pickup 7d"]], rows) + NOTE, ["pickup"]);
+  }
+  if (/frescura|actualiz|calidad|datos|fuente|cuarentena|en vivo|tiempo real/.test(t)) return out(`**Frescura de datos** (ahora simulado: ${DATA.as_of})\n\n` + mdT([["source", "Fuente"], ["hotel_id", "Hotel"], ["ultimo_evento", "Último evento"], [(r) => (r.minutos_desde_ultimo_evento < 90 ? Math.round(r.minutos_desde_ultimo_evento) + " min" : (r.minutos_desde_ultimo_evento / 60).toFixed(1) + " h"), "Retraso"]], DATA.health) + "\n\nCalidad:\n\n" + mdT([["check", "Chequeo"], [(r) => fmt.n(r.value), "Valor"]], DATA.dq.filter((r) => !r.check.endsWith(".registros"))) + NOTE, ["data_freshness"]);
+  if (/ocupacion|adr|revpar|kpi|como vino|como viene|como nos fue|ingresos|mes/.test(t)) {
+    const cur = DATA.today.slice(0, 7); let ym = cur;
+    const mi = MESES.findIndex((m) => t.includes(m));
+    if (/mes pasado/.test(t)) { const d = new Date(today.getFullYear(), today.getMonth() - 1, 1); ym = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); }
+    else if (mi >= 0) { const y = mi + 1 <= today.getMonth() + 1 ? today.getFullYear() : today.getFullYear() - 1; ym = y + "-" + String(mi + 1).padStart(2, "0"); }
+    const rows = DATA.monthly.filter((r) => r.month === ym && inH(r));
+    const [yy, mm] = ym.split("-");
+    return out(`**KPIs ${MESES[+mm - 1]} ${yy}**${rows.some((r) => r.has_future) ? " (el mes incluye fechas futuras: reservas _on the books_)" : ""}\n\n` + mdT([["hotel_id", "Hotel"], [(r) => fmt.pct(r.sold / r.avail), "Ocupación"], [(r) => fmt.usd(r.rev / r.sold), "ADR"], [(r) => fmt.usd(r.rev / r.avail), "RevPAR"], [(r) => fmt.usd(r.rev), "Ingreso hab."], [(r) => fmt.n(r.cancelled), "Noches canceladas"]], rows) + NOTE, ["kpis"]);
+  }
+  const ej = "- «¿Cómo vino septiembre en Mendoza?»\n- «¿Cómo viene el ritmo de reservas los próximos 30 días?»\n- «¿Qué canales nos dejan más neto?»\n- «¿Estamos caros vs. la competencia en Cartagena?»\n- «¿Hay fugas de paridad con Booking?»\n- «¿Qué tan frescos están los datos?»" + (agent ? "\n- «Recomendame precios para los próximos 14 días»\n- «Proponé los cambios»" : "");
+  return out("No entendí bien la consulta. Algunas cosas que puedo responder:\n\n" + ej + NOTE, []);
 }
 
 /* ---------- init ---------- */
 $("hotel").innerHTML = '<option value="ALL">Todos los hoteles</option>' + DATA.hotels.map((h) => `<option value="${h.hotel_id}">${esc(h.hotel_name)} · ${esc(h.city)}</option>`).join("");
 $("hotel").onchange = (e) => { hotel = e.target.value; renderAll(); };
-if (!LIVE) { $("chatcard").innerHTML = '<div style="padding:14px" class="sub"><b>Versión estática.</b> Para conversar con los datos, aprobar precios y avanzar la simulación en vivo: <code>hotelsim serve</code></div>'; $("tick").style.display = "none"; }
-else {
+$("mode").onchange = chips; chips();
+$("form").onsubmit = (e) => { e.preventDefault(); const t = $("q").value.trim(); if (t) { $("q").value = ""; send(t); } };
+if (LIVE) {
   $("engine").textContent = "motor: " + (DATA.engine || "");
-  $("mode").onchange = chips; chips();
-  $("form").onsubmit = (e) => { e.preventDefault(); const t = $("q").value.trim(); if (t) { $("q").value = ""; send(t); } };
   $("tick").onclick = async () => { $("tick").disabled = true; try { const r = await api("/api/tick", { minutes: 60 }); toast(r.message); await reload(); } catch (e) { toast(e.message); } $("tick").disabled = false; };
-  addMsg("a", md("Hola. Preguntame por **KPIs, ritmo de reservas, competencia, canales, paridad o frescura de datos**. En modo _Agente de pricing_ puedo recomendar y **proponer** precios (siempre los aprueba una persona)."));
+} else {
+  $("engine").textContent = "demo en el navegador · reglas fijas, sin servidor ni IA";
+  $("tick").style.display = "none";
 }
+addMsg("a", md("Hola. Preguntame por **KPIs, ritmo de reservas, competencia, canales, paridad o frescura de datos**. En modo _Agente de pricing_ puedo recomendar y **proponer** precios (siempre los aprueba una persona)."));
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", renderAll);
 renderAll();
 </script>

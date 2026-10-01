@@ -7,6 +7,10 @@ pricing con aprobación humana. Con **datos sintéticos** (3 hoteles ficticios: 
 > Hoteles, tarifas, eventos y reservas son inventados. Sirve para probar el producto y el método, no para sacar
 > conclusiones de mercado. Ver [`docs/FUENTES.md`](docs/FUENTES.md) para qué está verificado y qué es supuesto.
 
+## Demo en un solo archivo HTML (sin instalar nada)
+
+Abrí con doble clic [`demo/hotelsim_demo.html`](demo/hotelsim_demo.html) (~190 KB, funciona sin internet ni servidor). Trae los datos ya simulados: tablero, chat con reglas fijas, y el flujo *agente propone → persona aprueba → se publica (simulado)*. Se regenera con `hotelsim dashboard`. No incluye la simulación en vivo ni Claude: para eso, `hotelsim serve`.
+
 ## Probarlo (5 minutos)
 
 ```bash

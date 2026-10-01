@@ -43,7 +43,7 @@ def cmd_dashboard(a):
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(dashboard.build_html(live=False), encoding="utf-8")
-    print(f"Tablero estático en {out}")
+    print(f"Demo HTML en {out} ({out.stat().st_size // 1024} KB): abrila con doble clic")
 
 
 def cmd_serve(a):
@@ -143,8 +143,8 @@ def main(argv=None):
     s.set_defaults(fn=cmd_tick)
     sub.add_parser("refresh", help="reprocesa bronze→silver→gold").set_defaults(fn=cmd_refresh)
     sub.add_parser("status", help="frescura y calidad de datos").set_defaults(fn=cmd_status)
-    s = sub.add_parser("dashboard", help="genera el tablero HTML estático")
-    s.add_argument("--out", default="reports/dashboard.html")
+    s = sub.add_parser("dashboard", help="genera la DEMO en un solo archivo HTML (abre con doble clic, sin servidor)")
+    s.add_argument("--out", default="demo/hotelsim_demo.html")
     s.set_defaults(fn=cmd_dashboard)
     s = sub.add_parser("serve", help="tablero interactivo + chat + aprobación (http://127.0.0.1:8765)")
     s.add_argument("--port", type=int, default=8765)

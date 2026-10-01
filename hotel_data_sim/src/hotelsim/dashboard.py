@@ -24,7 +24,7 @@ def _records(df: pd.DataFrame) -> list[dict]:
     return json.loads(df.to_json(orient="records", double_precision=4))
 
 
-def collect() -> dict:
+def collect(rec_limit: int = 12) -> dict:
     con = connect(read_only=True)
     q = lambda sql, p=None: con.execute(sql, p or []).df()  # noqa: E731
     meta = q("SELECT * FROM meta").iloc[0]
@@ -44,8 +44,14 @@ def collect() -> dict:
           SUM(CASE WHEN stay_date < CAST(? AS DATE) - 30 THEN rooms_available END) AS avail_prev
         FROM gold_daily_kpis WHERE stay_date BETWEEN CAST(? AS DATE) - 60 AND CAST(? AS DATE) - 1
         GROUP BY hotel_id ORDER BY hotel_id""", [today.date()] * 8)
+    monthly = q("""
+        SELECT hotel_id, strftime(stay_date, '%Y-%m') AS month, SUM(rooms_sold) AS sold, SUM(rooms_available) AS avail,
+               SUM(room_revenue_usd) AS rev, SUM(cancelled_room_nights) AS cancelled, MAX((NOT is_actual)::INT) AS has_future
+        FROM gold_daily_kpis WHERE stay_date BETWEEN CAST(? AS DATE) - 400 AND CAST(? AS DATE) + 30
+        GROUP BY hotel_id, strftime(stay_date, '%Y-%m') ORDER BY hotel_id, month""", [today.date(), today.date()])
     pace = q("""
-        SELECT hotel_id, stay_date, SUM(otb_now) AS otb, SUM(otb_stly) AS otb_stly, SUM(capacity) AS capacity
+        SELECT hotel_id, stay_date, SUM(otb_now) AS otb, SUM(otb_stly) AS otb_stly, SUM(capacity) AS capacity,
+               SUM(pickup_7d) AS pickup_7d
         FROM gold_pickup WHERE days_out BETWEEN 0 AND 60 GROUP BY hotel_id, stay_date ORDER BY hotel_id, stay_date""")
     comp = q("""SELECT hotel_id, stay_date, rate_index, our_bar_usd, comp_median_usd, event_name
                 FROM gold_compset WHERE days_out BETWEEN 0 AND 60 ORDER BY hotel_id, stay_date""")
@@ -63,7 +69,7 @@ def collect() -> dict:
     con.close()
     try:
         recs = pricing.recommendations(30)
-        recs = recs.reindex(recs.change_pct.abs().sort_values(ascending=False).index).head(12)
+        recs = recs.reindex(recs.change_pct.abs().sort_values(ascending=False).index).head(rec_limit)
         rec_rows = [dict(hotel_id=r.hotel_id, room_type=r.room_type, stay_date=r.stay_date.strftime("%Y-%m-%d"),
                          current_usd=float(r.bar_usd), new_usd=float(r.rec_bar_usd), change_pct=float(r.change_pct),
                          proj_occ=float(r.proj_occ), confidence=r.confidence, reasons=r.reasons) for r in recs.itertuples()]
@@ -71,7 +77,7 @@ def collect() -> dict:
         rec_rows = []
     return dict(
         as_of=str(meta.as_of_ts), today=str(today.date()), hotels=_records(hotels), daily=_records(daily),
-        roll=_records(roll), pace=_records(pace), comp=_records(comp), mix=_records(mix), parity=_records(parity),
+        roll=_records(roll), monthly=_records(monthly), pace=_records(pace), comp=_records(comp), mix=_records(mix), parity=_records(parity),
         parity_rows=_records(parity_rows), health=_records(health), dq=_records(dq), events=_records(events),
         recs=rec_rows, pending=channels.list_queue("propuesto"),
     )
@@ -80,7 +86,7 @@ def collect() -> dict:
 def build_html(live: bool = True, engine: str = "") -> str:
     from pathlib import Path
     tpl = (Path(__file__).parent / TEMPLATE_FILE).read_text(encoding="utf-8")
-    state = collect()
+    state = collect(rec_limit=12 if live else 80)
     state["engine"] = engine
     data = json.dumps(state, ensure_ascii=False, default=str).replace("</", "<\\/")
     return tpl.replace("__DATA__", data).replace("__LIVE__", "true" if live else "false")
