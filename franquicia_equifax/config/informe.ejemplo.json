@@ -2,7 +2,8 @@
   "_ayuda": "Copiá este archivo como config/informe.json (no se sube al repositorio). Si completás 'drive', las planillas se bajan solas de Google Drive y las rutas 'excel_*' se ignoran.",
   "drive": {
     "liquidaciones": "ID_DE_LA_PLANILLA_Calculo_transferencias_Virtus",
-    "prospeccion": "ID_DE_LA_PLANILLA_PROSPECCION"
+    "prospeccion": "ID_DE_LA_PLANILLA_PROSPECCION",
+    "gestion_prospectos": "ID_DE_LA_PLANILLA_PROSPECCION_MARTI_MDZ"
   },
   "credenciales_google": "~/.config/virtus/cuenta-servicio.json",
   "excel_liquidaciones": "~/Descargas/Calculo_transferencias_Virtus.xlsx",
@@ -10,7 +11,10 @@
   "anio_prospeccion": 2026,
   "envio": {
     "remitente": "informes@tu-dominio.com.ar",
-    "destinatarios": ["socio1@ejemplo.com", "socio2@ejemplo.com"],
+    "destinatarios": [
+      "socio1@ejemplo.com",
+      "socio2@ejemplo.com"
+    ],
     "copia": [],
     "asunto": "Informe mensual Virtus · liquidación {mes}",
     "smtp": {
@@ -19,5 +23,6 @@
       "usuario": "informes@tu-dominio.com.ar",
       "variable_password": "VIRTUS_SMTP_PASSWORD"
     }
-  }
+  },
+  "excel_gestion_prospectos": "~/Descargas/PROSPECCION_MARTI_MDZ.xlsx"
 }

@@ -50,7 +50,11 @@ def corr(xs, ys) -> float | None:
         return None
 
 
-def analizar(p: dict) -> dict:
+def analizar(p: dict, excluir: tuple[str, ...] = ()) -> dict:
+    """`excluir`: comerciales que no deben aparecer en el análisis (p. ej. quien ya no está en el equipo)."""
+    p = {**p, "dias": [d for d in p["dias"] if d["comercial"] not in excluir],
+         "cierres": [c for c in p["cierres"] if c["comercial"] not in excluir],
+         "avisos": [a for a in p["avisos"] if not any(x in a for x in excluir)]}
     dias = p["dias"]
     for d in dias:
         f = dt.date.fromisoformat(d["fecha"])
@@ -126,7 +130,7 @@ def textos(a: dict) -> dict:
     otro = [c for c in a["comerciales"] if c != principal]
     patrones = []
     patrones.append((
-        "Atienden casi todas las llamadas: la tasa de contacto es altísima.",
+        f"Atienden {pct(t['tasa_respuesta'])} de las llamadas: la tasa de contacto es muy alta.",
         f"De {t['llamadas']:.0f} llamadas, {t['respondieron']:.0f} tuvieron respuesta (<b>{pct(t['tasa_respuesta'])}</b>). "
         f"En llamadas en frío B2B lo habitual es 8–12% por llamada y 18–25% con dueños de PyME. Hay dos explicaciones posibles: "
         f"se llama a bases tibias (clientes, referidos o contactos previos) o “respondió” incluye cualquier contacto, aunque no sea con quien decide. "

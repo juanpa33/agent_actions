@@ -15,6 +15,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import crm
 import prospeccion
 
 AQUI = Path(__file__).parent
@@ -269,10 +270,15 @@ def main(entrada: str, salida: str) -> None:
         "ipcBase": etiqueta(ipc["base"]),
         "prospeccion": None,
     }
+    opciones = json.loads((AQUI / "config" / "tablero.json").read_text()) if (AQUI / "config" / "tablero.json").exists() else {}
     ruta_p = Path(entrada).parent / "prospeccion.json"
     if ruta_p.exists():
-        pa = prospeccion.analizar(json.loads(ruta_p.read_text()))
+        pa = prospeccion.analizar(json.loads(ruta_p.read_text()), tuple(opciones.get("excluir_comerciales", [])))
         payload["prospeccion"] = {**pa, **prospeccion.textos(pa)}
+    ruta_c = Path(entrada).parent / "crm.json"
+    if ruta_c.exists() and payload["prospeccion"]:
+        ca = crm.analizar(json.loads(ruta_c.read_text()))
+        payload["prospeccion"]["crm"] = {**ca, **crm.textos(ca)}
     html = (AQUI / "plantilla.html").read_text()
     html = html.replace("/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
     Path(salida).parent.mkdir(parents=True, exist_ok=True)

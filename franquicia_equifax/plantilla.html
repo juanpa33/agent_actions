@@ -159,6 +159,8 @@ body.pdf footer { margin-top: 16px; }
 body.pdf .salto { break-before: page; }
 body.pdf .two { grid-template-columns: 1.3fr 1fr; }
 body.pdf #datos .two { grid-template-columns: 1fr; }
+body.pdf #p-cartera .card { break-inside: auto; }
+body.pdf tr { break-inside: avoid; }
 body.pdf footer { display: none; }
 body.pdf .concl .card, body.pdf .num-list .card { padding-left: 38px; }
 body.pdf .concl .card::before, body.pdf .num-list .card::before { left: 12px; top: 9px; font-size: 17px; }
@@ -345,11 +347,12 @@ body.pdf .portada { display: flex; flex-direction: column; justify-content: spac
 
 <main class="wrap" id="tabPros" role="tabpanel" hidden>
   <h1>Prospección telefónica</h1>
-  <p class="lead">Análisis de la planilla compartida de llamadas: cuántas se hacen, cuántas atienden, cuántos se interesan y cuántos terminan en alta, por comercial y por día.
+  <p class="lead">Dos fuentes: la planilla diaria de llamadas (cuántas se hacen, cuántas atienden, cuántos se interesan) y la planilla de gestión de prospectos,
+  con una fila por prospecto y el seguimiento de cada uno.
   <b>Hay pocos datos todavía</b>, así que cada porcentaje se muestra con su rango probable. Si los rangos se superponen, la diferencia puede ser casualidad.</p>
   <nav class="toc">
     <a href="#p-resumen">Resumen</a><a href="#p-embudo">Embudo</a><a href="#p-comerciales">Por comercial</a><a href="#p-diario">Día a día</a>
-    <a href="#p-semana">Día de la semana</a><a href="#p-patrones">Patrones</a><a href="#p-bench">Comparación externa</a><a href="#p-sugerencias">Sugerencias</a>
+    <a href="#p-semana">Día de la semana</a><a href="#p-gestion">Gestión de la base</a><a href="#p-cartera">Cartera activa</a><a href="#p-patrones">Patrones</a><a href="#p-bench">Comparación externa</a><a href="#p-sugerencias">Sugerencias</a>
   </nav>
 
   <section id="p-resumen"><h2>1. Resumen</h2><p class="lead" id="pLead"></p><div class="grid kpis" id="pKpis"></div></section>
@@ -364,7 +367,7 @@ body.pdf .portada { display: flex; flex-direction: column; justify-content: spac
   </section>
 
   <section id="p-comerciales">
-    <h2>3. Por comercial y por mes</h2>
+    <h2>3. Detalle por mes</h2>
     <div class="card scroll"><table id="pTablaCom"></table></div>
     <div class="card scroll" style="margin-top:14px"><h3>Mes a mes</h3><table id="pTablaMes"></table></div>
   </section>
@@ -388,15 +391,38 @@ body.pdf .portada { display: flex; flex-direction: column; justify-content: spac
     </div>
   </section>
 
-  <section id="p-patrones"><h2>6. Patrones detectados</h2><div class="num-list" id="pPatrones"></div></section>
+  <section id="p-gestion">
+    <h2>6. Gestión de la base de prospectos</h2>
+    <p class="lead" id="cLead"></p>
+    <div class="grid kpis" id="cKpis"></div>
+    <div class="grid two" style="margin-top:14px">
+      <div class="card"><h3>Embudo de la base</h3><div class="chart" id="cEmbudo"></div></div>
+      <div class="card"><h3>En qué etapa está cada prospecto</h3>
+        <div class="legend"><span><i class="sw" style="background:var(--s3)"></i>Avanzado</span><span><i class="sw" style="background:var(--s1)"></i>Con interés</span><span><i class="sw" style="background:var(--axis)"></i>Pendiente o sin contacto</span><span><i class="sw" style="background:var(--s2)"></i>Descartado</span></div>
+        <div class="chart" id="cEtapas"></div></div>
+    </div>
+    <div class="grid kpis" style="margin-top:14px" id="cMini"></div>
+    <h3 style="margin-top:18px">Lo que muestra la gestión</h3>
+    <div class="num-list" id="cPatrones"></div>
+  </section>
+
+  <section id="p-cartera">
+    <h2>7. Cartera activa: con quién seguir</h2>
+    <p class="lead">Prospectos con interés, en demo o a punto de cerrar, y los que pidieron que los vuelvan a llamar. Ordenados por cercanía al cierre. “Último paso” es la última nota de la planilla (sin teléfonos ni mails).</p>
+    <div class="card scroll"><table id="cCartera"></table></div>
+  </section>
+
+  <section id="p-patrones"><h2>8. Patrones de las llamadas diarias</h2><div class="num-list" id="pPatrones"></div></section>
 
   <section id="p-bench">
-    <h2>7. Comparación con call centers y equipos de prospección</h2>
+    <h2>9. Comparación con call centers y equipos de prospección</h2>
     <div class="card scroll"><table id="pBench"></table></div>
     <p class="muted" style="font-size:12.5px">Las referencias son de estudios de llamadas en frío B2B de 2025–2026, casi todos de EE. UU. y Europa. Sirven como orden de magnitud: la prospección local, con bases tibias y relaciones personales, suele tener tasas de contacto más altas.</p>
   </section>
 
-  <section id="p-sugerencias"><h2>8. Sugerencias para el equipo</h2><div class="num-list" id="pSug"></div></section>
+  <section id="p-sugerencias"><h2>10. Sugerencias para el equipo</h2>
+    <h3>Para la gestión de la base</h3><div class="num-list" id="cSug"></div>
+    <h3 style="margin-top:16px">Para las llamadas</h3><div class="num-list" id="pSug"></div></section>
 
   <section>
     <h2>Datos y fuentes</h2>
@@ -802,7 +828,7 @@ const COLC = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
 function renderPros() {
   if (!P) { $('#tabPros').innerHTML = '<h1>Prospección</h1><p class="lead">Todavía no hay datos: corré <code>extraer_prospeccion.py</code> con la planilla y volvé a generar el tablero.</p>'; return; }
   const t = P.total, pc = P.por_com;
-  $('#pLead').innerHTML = `${P.comerciales.join(' y ')} registraron <b>${t.dias} jornadas</b> entre ${P.dias[0].etiqueta} y ${P.dias[P.dias.length - 1].etiqueta}. La planilla anota totales por día, sin hora ni nombre del prospecto.`;
+  $('#pLead').innerHTML = `${P.comerciales.join(' y ')} ${P.comerciales.length > 1 ? 'registraron' : 'registró'} <b>${t.dias} jornadas</b> entre ${P.dias[0].etiqueta} y ${P.dias[P.dias.length - 1].etiqueta}. La planilla anota totales por día, sin hora ni nombre del prospecto.`;
   const k = [
     ['Llamadas', t.llamadas.toFixed(0), `${t.llamadas_por_dia.toFixed(0)} por comercial por día`, 'Cada intento de llamada registrado, haya atendido o no.'],
     ['Tasa de contacto', fP(t.tasa_respuesta), `${t.respondieron.toFixed(0)} atendieron`, 'Qué porcentaje de las llamadas terminó en una conversación. En frío, lo habitual es 8–12%.'],
@@ -887,6 +913,7 @@ function renderPros() {
   $('#pBench').innerHTML = '<tr><th>Indicador</th><th style="text-align:left">Equipo Virtus</th><th style="text-align:left">Referencia externa</th><th style="text-align:left">Lectura</th></tr>' +
     P.benchmark.map(b => `<tr><td><b>${b[0]}</b></td><td style="text-align:left;white-space:normal">${b[1]}</td><td style="text-align:left;white-space:normal">${b[2]}</td><td style="text-align:left;white-space:normal;color:var(--ink-2)">${b[3]}</td></tr>`).join('');
   $('#pSug').innerHTML = P.sugerencias.map(([ti, p]) => `<div class="card"><h3>${ti}</h3><p>${p}</p></div>`).join('');
+  renderCrm();
   $('#pAvisos').innerHTML = [
     'Cada hoja es un mes y cada comercial tiene un bloque con totales por día. Se toman las filas de llamadas, respondieron, interesados y no interesados.',
     'Los cierres (“CERRADO” y “Por cerrar”) figuran como total del mes por comercial, así que no se pueden asignar a un día.',
@@ -894,6 +921,63 @@ function renderPros() {
     'Se asume que las fechas son de ' + (P.dias[0]?.fecha.slice(0, 4) || '') + '. La planilla no tiene año ni hora.',
   ].map(x => `<li style="margin-bottom:6px">${x}</li>`).join('');
 }
+
+// ---------- Gestión de la base (planilla de prospectos) ----------
+const GRUPO = { 'Alta lograda': 'var(--s3)', 'Cierre pendiente': 'var(--s3)', 'Demo o reunión': 'var(--s3)', 'Interesado en seguimiento': 'var(--s1)',
+  'Pidió que lo llamen': 'var(--axis)', 'No contesta': 'var(--axis)', 'Contacto clave sin llamar': 'var(--axis)', 'Sin gestionar': 'var(--grid)',
+  'No interesado': 'var(--s2)', 'Ya era cliente': 'var(--s2)', 'Número inválido': 'var(--s2)' };
+function renderCrm() {
+  const C = P.crm;
+  if (!C) { ['#p-gestion', '#p-cartera'].forEach(x => $(x)?.remove()); $('#cSug')?.previousElementSibling?.remove(); $('#cSug')?.remove(); return; }
+  $('#cLead').innerHTML = `La planilla de gestión tiene <b>${C.total} prospectos</b> (corredores e inmobiliarias de Mendoza). El estado de cada uno se lee de sus comentarios,
+    porque las columnas de estado casi no se completan. La clasificación es automática y puede tener algún error puntual: sirve para ver el conjunto.`;
+  const k = [
+    ['Base de prospectos', C.total, `${C.sin_gestionar} todavía sin llamar`, 'Todos los prospectos cargados en la planilla.'],
+    ['Gestionados', C.gestionados, fP(C.gestionados / C.total) + ' de la base', 'Prospectos con al menos un comentario de gestión.'],
+    ['Se habló con', C.contactados, fP(C.contactados / C.gestionados) + ' de los gestionados', 'Atendieron al menos una vez (se excluyen “no contesta”, números inválidos y contactos aún sin llamar).'],
+    ['Con interés', C.con_interes, fP(C.con_interes / C.contactados) + ' de los que atendieron', 'Interesados en seguimiento, en demo o reunión, con cierre pendiente o con alta.'],
+    ['Demo, reunión o contrato', C.avanzados, fP(C.avanzados / C.con_interes) + ' de los interesados', 'Prospectos que llegaron a una demo, una reunión, o tienen el contrato en curso o firmado.'],
+    ['Altas confirmadas', C.altas, `+ ${C.cierre_pendiente} con cierre pendiente`, 'Contrato generado según la planilla. Puede haber altas que no se anotaron.'],
+  ];
+  $('#cKpis').innerHTML = k.map(([l, v, s2, e]) => `<div class="card kpi"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s2}</div><details><summary>¿Qué significa?</summary>${e}</details></div>`).join('');
+
+  // embudo de la base
+  const et = [['Base', C.total], ['Gestionados', C.gestionados], ['Se habló con', C.contactados], ['Con interés', C.con_interes], ['Demo, reunión o contrato', C.avanzados], ['Alta confirmada', C.altas]];
+  const rowH = 48, g = svgFor('cEmbudo', et.length * rowH + 4), maxW = g.w * 0.55;
+  et.forEach(([lab, v], i) => {
+    const bw = Math.max(6, maxW * Math.sqrt(v / C.total)), y = i * rowH + 4;
+    el('path', { d: `M4,${y + 18}h${bw - 4}q4,0 4,4v${rowH - 32}q0,4 -4,4h${-(bw - 4)}Z`, fill: i >= 4 ? 'var(--s3)' : 'var(--s1)' }, g.svg);
+    text(g.svg, 4, y + 12, lab, 'dl');
+    text(g.svg, bw + 12, y + 18 + (rowH - 24) / 2 + 3, `${v}${i ? '  ·  ' + fP(v / et[i - 1][1]) + ' del paso anterior' : ''}`, 'dl-strong');
+  });
+
+  // etapas
+  const items = C.etapas, rh = 24, ge = svgFor('cEtapas', items.length * rh + 4);
+  const lx = Math.min(180, ge.w * 0.45), mx = Math.max(...items.map(x => x.n)), x1 = ge.w - 40;
+  items.forEach((x, i) => {
+    const y = i * rh + 2, bw = Math.max(3, (x1 - lx - 8) * x.n / mx);
+    el('path', { d: `M${lx + 8},${y + 5}h${bw - 3}q3,0 3,3v${rh - 16}q0,3 -3,3h${-(bw - 3)}Z`, fill: GRUPO[x.etapa] || 'var(--axis)' }, ge.svg);
+    text(ge.svg, lx, y + rh / 2 + 3, x.etapa, 'dl', 'end');
+    text(ge.svg, lx + 14 + bw, y + rh / 2 + 3, x.n, 'dl');
+  });
+
+  // tarjetas chicas: competencia, objeciones, horario, ritmo
+  const lista = (arr, vacio) => arr.length ? arr.map(([k2, v]) => `<div class="r" style="display:flex;justify-content:space-between;gap:10px;font-size:13px"><span>${k2}</span><b>${v}</b></div>`).join('') : `<span class="muted">${vacio}</span>`;
+  $('#cMini').innerHTML = [
+    ['Competencia que mencionan', lista(C.competidores, 'Sin menciones')],
+    ['Objeciones y obstáculos', lista(C.objeciones, 'Sin menciones')],
+    ['Horario que piden para volver a llamar', lista(C.franjas, 'Sin menciones')],
+    ['Prospectos nuevos gestionados por mes', lista(C.por_mes.map(m => [m.etiqueta, m.n]), '–') + `<div class="muted" style="font-size:12px;margin-top:6px">Mes aproximado: muchas filas no tienen fecha.</div>`],
+    ['Canal', `<div style="font-size:13px"><b>${C.whatsapp}</b> prospectos con envío o pedido por WhatsApp (${fP(C.whatsapp / C.gestionados)}).<br><b>${C.seguimientos}</b> seguimientos anotados en total; ${C.seg_interes.toLocaleString('es-AR', { maximumFractionDigits: 1 })} por interesado.</div>`],
+    ['Calidad de la base', `<div style="font-size:13px"><b>${C.retirados}</b> jubilados o sin actividad · <b>${C.invalidos}</b> números inválidos · <b>${C.ya_clientes}</b> ya eran clientes.</div>`],
+  ].map(([t2, h]) => `<div class="card"><h3>${t2}</h3>${h}</div>`).join('');
+  $('#cPatrones').innerHTML = C.crm_patrones.map(([ti, p]) => `<div class="card"><h3>${ti}</h3><p>${p}</p></div>`).join('');
+
+  $('#cCartera').innerHTML = '<tr><th>Etapa</th><th>ID</th><th style="text-align:left">Prospecto</th><th>Seguim.</th><th style="text-align:left">Último paso anotado</th></tr>' +
+    C.cartera.map(x => `<tr><td><i class="sw" style="background:${GRUPO[x.etapa]}"></i> ${x.etapa}</td><td>${x.id ?? '–'}</td><td style="text-align:left;white-space:normal">${x.nombre}</td><td>${x.seguimientos}</td><td style="text-align:left;white-space:normal;color:var(--ink-2)">${x.accion}</td></tr>`).join('');
+  $('#cSug').innerHTML = C.crm_sugerencias.map(([ti, p]) => `<div class="card"><h3>${ti}</h3><p>${p}</p></div>`).join('');
+}
+
 const DIAS_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 // ---------- pestañas ----------
@@ -945,7 +1029,7 @@ function modoPdf() {
   if (D.prospeccion) renderPros(); else $('#tabPros').remove();
   document.querySelectorAll('details').forEach(d => d.open = true);
   // Saltos de página antes de los bloques grandes.
-  ['#mes', '#evolucion', '#apalancamiento', '#costos', '#socios', '#conclusiones', '#datos', '#p-diario', '#p-patrones', '#p-bench'].forEach(sel => $(sel)?.classList.add('salto'));
+  ['#mes', '#evolucion', '#apalancamiento', '#costos', '#socios', '#conclusiones', '#datos', '#p-diario', '#p-gestion', '#p-patrones', '#p-bench'].forEach(sel => $(sel)?.classList.add('salto'));
   const claves = D.conclusiones.slice(0, 5).map(c => c[0]).concat(D.ideas.filter(i => i[2] === 'Alta').slice(0, 3).map(i => `Idea: ${i[0].toLowerCase()}`));
   const a = D.analisis, t = D.prospeccion?.total;
   const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });

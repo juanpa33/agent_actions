@@ -1,0 +1,4 @@
+{
+  "_ayuda": "Copiá este archivo como config/tablero.json (no se sube al repositorio). excluir_comerciales: nombres que no se muestran en la pestaña Prospección.",
+  "excluir_comerciales": []
+}

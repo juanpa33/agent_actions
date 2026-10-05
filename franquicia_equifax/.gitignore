@@ -5,3 +5,4 @@ salida/
 *.pdf
 # Rutas locales y mails de destinatarios
 config/informe.json
+config/tablero.json

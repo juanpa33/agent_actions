@@ -103,6 +103,9 @@ def main() -> None:
         if drive.get("prospeccion"):
             descargar_drive.descargar(drive["prospeccion"], str(datos / "drive_prospeccion.xlsx"), tk)
             cfg["excel_prospeccion"] = str(datos / "drive_prospeccion.xlsx")
+        if drive.get("gestion_prospectos"):
+            descargar_drive.descargar(drive["gestion_prospectos"], str(datos / "drive_gestion_prospectos.xlsx"), tk)
+            cfg["excel_gestion_prospectos"] = str(datos / "drive_gestion_prospectos.xlsx")
 
     print("1/4 Leyendo liquidaciones...")
     extraer_datos.main(os.path.expanduser(cfg["excel_liquidaciones"]), str(datos / "virtus_mensual.json"))
@@ -112,6 +115,11 @@ def main() -> None:
                                  cfg.get("anio_prospeccion", dt.date.today().year))
     else:
         print("2/4 Sin planilla de prospección configurada.")
+    if cfg.get("excel_gestion_prospectos"):
+        import extraer_crm
+        print("    Leyendo gestión de prospectos...")
+        extraer_crm.main(os.path.expanduser(cfg["excel_gestion_prospectos"]), str(datos / "crm.json"),
+                         cfg.get("anio_prospeccion", dt.date.today().year))
     print("3/4 Generando tablero y PDF...")
     html = salida / "tablero_virtus.html"
     generar_tablero.main(str(datos / "virtus_mensual.json"), str(html))

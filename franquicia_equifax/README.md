@@ -77,6 +77,8 @@ El botón **Pesos de hoy** ajusta todos los montos por inflación (IPC INDEC).
 - `extraer_datos.py`: lee todas las hojas (que tienen formatos distintos), clasifica cada gasto en un rubro y verifica que cada mes cierre (disponible = gastos + resguardo + reparto).
 - `generar_tablero.py`: calcula los indicadores y escribe los textos de análisis con esos números.
 - `extraer_prospeccion.py`: lee la planilla de llamadas (un bloque por comercial y por mes) y descarta los bloques copiados de otra hoja.
+- `extraer_crm.py` y `crm.py`: leen la planilla de gestión de prospectos (una fila por prospecto), clasifican el estado de cada uno a partir de sus comentarios y arman las secciones “Gestión de la base” y “Cartera activa”. Teléfonos y mails no se copian.
+- `config/tablero.json` (copiar de `tablero.ejemplo.json`): comerciales a excluir de la pestaña Prospección.
 - `prospeccion.py`: calcula el embudo, los patrones y los textos de la pestaña Prospección.
 - `plantilla.html`: el diseño y los gráficos (SVG + JavaScript, sin librerías). Con `?pdf` en la URL se abre en modo impresión.
 - `exportar_pdf.py`: imprime el tablero a PDF A4 con Chromium sin ventana.
