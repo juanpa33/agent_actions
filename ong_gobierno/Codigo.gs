@@ -174,9 +174,13 @@ function instalar() {
   });
   ScriptApp.newTrigger('revisionDiaria').timeBased().everyDays(1).atHour(8).create();
 
-  SpreadsheetApp.getUi().alert(
-    'Listo. Completá la hoja "Miembros" con los 4 nombres y mails, ' +
-    'y revisá la hoja "Configuracion".');
+  var mensaje = 'Listo. Completá la hoja "Miembros" con los 4 nombres y mails, ' +
+    'y revisá la hoja "Configuracion".';
+  try {
+    SpreadsheetApp.getUi().alert(mensaje);
+  } catch (e) {
+    Logger.log(mensaje); // corrido desde el editor de Apps Script: no hay ventana para mostrar
+  }
 }
 
 /** Menú en la planilla para quien la administra. */
