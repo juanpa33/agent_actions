@@ -1,0 +1,9 @@
+{
+  "timeZone": "America/Argentina/Buenos_Aires",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "webapp": {
+    "executeAs": "USER_ACCESSING",
+    "access": "ANYONE"
+  }
+}
