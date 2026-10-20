@@ -461,7 +461,9 @@ function dibujar() {
     app.innerHTML = '<section class="hero"><h1>' + esc(datos.nombreOng) + '</h1></section>' +
       '<div class="tarjeta"><p>La cuenta <b>' + esc(datos.email || '(sin identificar)') +
       '</b> no está en la lista de miembros.</p><p>Pedile a quien administra la planilla que te agregue ' +
-      'en la hoja "Miembros".</p></div>';
+      'en la hoja "Miembros".</p>' +
+      (datos.diagnostico ? '<p class="suave" style="font-size:15px">Datos técnicos: ' + esc(datos.diagnostico) + '</p>' : '') +
+      '</div>';
     return;
   }
   var porVotar = datos.expedientes.filter(function (e) { return e.estado === 'Abierto' && !e.miVoto; }).length;

@@ -207,7 +207,8 @@ function obtenerDatos() {
   var yo = usuarioActual_();
   var config = leerConfig_();
   if (!yo.miembro) {
-    return { acceso: false, email: yo.email, nombreOng: config.NOMBRE_ONG };
+    return { acceso: false, email: yo.email, nombreOng: config.NOMBRE_ONG,
+             diagnostico: 'activo="' + yo.activo + '" efectivo="' + yo.efectivo + '" v2' };
   }
   var miembros = leerMiembros_();
   var votos = leerVotos_();
@@ -482,9 +483,22 @@ function registrar_(email, accion, detalle) {
 }
 
 function usuarioActual_() {
-  var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  var activo = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  // La aplicación web se publica como "Usuario que accede": el programa corre con la
+  // cuenta de quien entra, así que el usuario efectivo es esa misma persona. Sirve de
+  // respaldo cuando Google no informa el usuario activo.
+  var efectivo = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  var email = activo || efectivo;
   var miembro = !!email && leerMiembros_().some(function (m) { return m.email === email; });
-  return { email: email, miembro: miembro };
+  return { email: email, miembro: miembro, activo: activo, efectivo: efectivo };
+}
+
+/** Para correr desde el editor si algo no anda: muestra qué lee el sistema. */
+function diagnostico() {
+  Logger.log('Usuario activo: "' + Session.getActiveUser().getEmail() + '"');
+  Logger.log('Usuario efectivo: "' + Session.getEffectiveUser().getEmail() + '"');
+  Logger.log('Miembros leídos: ' + JSON.stringify(leerMiembros_()));
+  Logger.log('Configuración: ' + JSON.stringify(leerConfig_()));
 }
 
 function exigirMiembro_() {
