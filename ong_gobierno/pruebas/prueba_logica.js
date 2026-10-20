@@ -61,13 +61,23 @@ prueba('aviso de vencimiento: dos días antes sí, tres días antes no', () => {
   assert.strictEqual(L.debeAvisarVencimiento(exp(21), hoy, 2), true);   // si se salteó un día, igual avisa
   assert.strictEqual(L.debeAvisarVencimiento(exp(19), hoy, 2), false);  // ya vencido
   assert.strictEqual(L.debeAvisarVencimiento(exp(22, { avisoEnviado: true }), hoy, 2), false);
-  assert.strictEqual(L.debeAvisarVencimiento(exp(22, { estado: 'Aprobado' }), hoy, 2), false);
+  assert.strictEqual(L.debeAvisarVencimiento(exp(22, { estado: 'Aprobado' }), hoy, 2), true);  // aprobado pero no hecho
+  assert.strictEqual(L.debeAvisarVencimiento(exp(22, { estado: 'Rechazado' }), hoy, 2), false);
+  assert.strictEqual(L.debeAvisarVencimiento(exp(22, { estado: 'Finalizado' }), hoy, 2), false);
 });
 
 prueba('recordatorio de reunión: el jueves si la reunión es el viernes y se avisa 1 día antes', () => {
   assert.strictEqual(L.esDiaDeAvisoReunion(new Date(2026, 9, 22), 5, 1), true);  // jueves
   assert.strictEqual(L.esDiaDeAvisoReunion(new Date(2026, 9, 21), 5, 1), false); // miércoles
   assert.strictEqual(L.esDiaDeAvisoReunion(new Date(2026, 9, 25), 1, 1), true);  // domingo, reunión lunes
+});
+
+prueba('categorías del tablero: pendiente, en curso, terminado, finalizado', () => {
+  assert.strictEqual(L.categoria('Abierto', 0), 'Pendiente');
+  assert.strictEqual(L.categoria('Abierto', 2), 'En curso');
+  assert.strictEqual(L.categoria('Aprobado', 3), 'Terminado');
+  assert.strictEqual(L.categoria('Rechazado', 4), 'Terminado');
+  assert.strictEqual(L.categoria('Finalizado', 3), 'Finalizado');
 });
 
 console.log(`\n${ok} pruebas pasaron.`);

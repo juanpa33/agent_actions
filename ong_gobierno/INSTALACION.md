@@ -13,6 +13,27 @@ Qué hace:
   - a los 4, cuando un tema se cierra o queda sin mayoría.
 - **Historial** de todo lo que pasó (quién votó, cuándo, qué se creó).
 
+La página tiene tres secciones:
+
+- **Inicio**: explica cómo se usa, la regla de 3 de 4 con ejemplos y el camino
+  de un expediente. Muestra cuántos votos te faltan dar.
+- **Votar**: temas abiertos, aprobados que falta hacer (con el botón
+  **"Ya lo hice"** para el responsable), alta de expedientes y archivo.
+- **Tablero**: cuántos hay en cada estado, vencidos, tabla por responsable
+  (incluye cuántos abrió cada uno) y detalle filtrable.
+
+Estados del tablero (decidir y después hacer):
+
+| Estado | Qué significa |
+|---|---|
+| Pendiente | Abierto, nadie votó todavía en esta ronda |
+| En curso | La votación está en marcha |
+| Terminado | Ya se decidió: aprobado o rechazado |
+| Finalizado | Estaba aprobado y el responsable marcó "Ya lo hice" |
+
+Los aprobados siguen recibiendo el aviso de vencimiento hasta que se marcan
+como hechos.
+
 Los datos quedan en una planilla de Google, compartida solo con ustedes cuatro.
 
 ## Instalación (una sola vez, unos 15 minutos)
@@ -66,9 +87,11 @@ ahí usar el sitio normalmente.
 2. Votan 3 "A favor": tiene que quedar **Aprobado** y llegarles un mail a los 4.
 3. Creen otro y voten 2 a favor y 2 en contra: tiene que quedar abierto con
    "se vuelve a votar el viernes".
-4. En la planilla, menú **ONG → Mandar avisos de hoy ahora**: al responsable
+4. El responsable del primero toca **"Ya lo hice"**: en el Tablero tiene que
+   pasar a **Finalizado**.
+5. En la planilla, menú **ONG → Mandar avisos de hoy ahora**: al responsable
    del primer expediente le tiene que llegar el recordatorio.
-5. Si todo está bien, borren las filas de prueba de las hojas Expedientes,
+6. Si todo está bien, borren las filas de prueba de las hojas Expedientes,
    Votos e Historial. La numeración vuelve a empezar en 1.
 
 ## Cambios de código
@@ -92,4 +115,9 @@ node ong_gobierno/pruebas/prueba_logica.js
 ```
 
 Verifican la mayoría de 3 sobre 4, el empate que pasa al viernes siguiente, el
-aviso 2 días antes y el recordatorio del día anterior a la reunión.
+aviso 2 días antes, el recordatorio del día anterior a la reunión y los estados
+del tablero.
+
+Vista previa con datos inventados (se abre en cualquier navegador):
+`pruebas/vista_previa.html`. Agregando `#tablero` o `#expedientes` al final de
+la dirección se abre directo en esa sección.

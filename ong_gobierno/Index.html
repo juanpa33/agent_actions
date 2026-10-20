@@ -7,63 +7,156 @@
 <title>Expedientes</title>
 <style>
   :root {
-    --fondo: #f6f4ef; --tarjeta: #ffffff; --texto: #1d1d1b; --suave: #5a5852;
-    --borde: #d9d5cb; --azul: #1f4e79; --verde: #1e6b3a; --rojo: #a12b2b;
-    --gris: #5f6368; --aviso: #fff4d6; --aviso-borde: #c99a1e;
+    --fondo: #f6f4ef; --tarjeta: #ffffff; --texto: #1d1d1b; --suave: #57554f;
+    --borde: #d9d5cb; --azul: #1f4e79; --azul-claro: #e4edf6; --verde: #1e6b3a; --rojo: #a12b2b;
+    --gris: #5f6368; --aviso: #fff4d6; --aviso-borde: #b8860b;
+    /* Estados del tablero: siempre acompañados de su nombre, nunca solo color */
+    --pendiente: #6b6b6b; --encurso: #b8860b; --terminado: #1f4e79; --finalizado: #1e6b3a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--fondo); color: var(--texto);
-         font: 20px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 860px; margin: 0 auto; padding: 16px; }
-  header h1 { font-size: 30px; margin: 8px 0 4px; }
-  header p { margin: 0; color: var(--suave); }
-  .reunion { margin: 16px 0; padding: 14px 18px; background: var(--azul); color: #fff;
-             border-radius: 10px; font-size: 22px; }
-  h2 { font-size: 25px; margin: 32px 0 12px; }
+         font: 20px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 0 16px 48px; }
+  h1 { font-size: 32px; line-height: 1.2; margin: 8px 0; }
+  h2 { font-size: 26px; margin: 36px 0 12px; }
+  h3 { font-size: 22px; margin: 0 0 6px; }
+  p { margin: 6px 0; }
+  .suave { color: var(--suave); }
+
+  /* Navegación */
+  nav { position: sticky; top: 0; z-index: 3; background: var(--fondo); padding: 12px 0;
+        display: flex; gap: 8px; border-bottom: 2px solid var(--borde); margin-bottom: 8px; }
+  nav button { flex: 1; min-width: 0; padding: 10px 6px; background: #fff; color: var(--azul); border: 2px solid var(--azul); }
+  nav button[aria-current="page"] { background: var(--azul); color: #fff; }
+
   .tarjeta { background: var(--tarjeta); border: 2px solid var(--borde); border-radius: 12px;
              padding: 18px; margin-bottom: 16px; }
-  .tarjeta h3 { margin: 0 0 6px; font-size: 23px; }
-  .dato { margin: 4px 0; }
+  .reunion { margin: 16px 0; padding: 14px 18px; background: var(--azul); color: #fff;
+             border-radius: 10px; font-size: 22px; }
+
+  button { font: inherit; font-weight: 700; min-height: 56px; padding: 10px 20px;
+           border-radius: 10px; border: 3px solid transparent; cursor: pointer; color: #fff; }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 4px solid #f2b705; outline-offset: 2px; }
+  button:disabled { opacity: .55; cursor: wait; }
+  .favor { background: var(--verde); } .contra { background: var(--rojo); }
+  .abst { background: var(--gris); } .principal { background: var(--azul); }
+  .secundario { background: #fff; color: var(--azul); border-color: var(--azul); }
+  button.elegido { border-color: #111; box-shadow: 0 0 0 3px #f2b705; }
+  .botones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+  /* Inicio */
+  .hero { padding: 20px 0 4px; }
+  .hero .lema { font-size: 23px; color: var(--suave); }
+  .pasos { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .pasos li { display: flex; gap: 16px; align-items: flex-start; }
+  .num { flex: 0 0 48px; height: 48px; border-radius: 50%; background: var(--azul); color: #fff;
+         display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 24px; }
+  .regla { font-size: 24px; font-weight: 800; color: var(--azul); background: var(--azul-claro);
+           border-radius: 10px; padding: 14px 18px; margin: 8px 0 16px; }
+  .ejemplos { display: grid; gap: 10px; }
+  .ejemplo { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 12px 14px;
+             border: 2px solid var(--borde); border-radius: 10px; background: #fff; }
+  .fichas { display: flex; gap: 6px; }
+  .ficha { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+           justify-content: center; font-weight: 800; color: #fff; font-size: 20px; }
+  .ficha.f { background: var(--verde); } .ficha.c { background: var(--rojo); }
+  .ficha.a { background: var(--gris); }
+  .ficha.n { background: #fff; color: var(--suave); border: 2px dashed var(--suave); }
+  .ejemplo .flecha { font-size: 24px; color: var(--suave); }
+  .ejemplo .que { font-weight: 700; }
+  .ciclo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  .etapa { border-radius: 10px; padding: 12px; background: #fff; border: 2px solid var(--borde);
+           border-top: 8px solid var(--c); }
+  .etapa b { display: block; font-size: 21px; }
+  .etapa span { font-size: 17px; color: var(--suave); display: block; line-height: 1.35; }
+  @media (max-width: 640px) { .ciclo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  details.faq { background: #fff; border: 2px solid var(--borde); border-radius: 10px;
+                padding: 12px 16px; margin-bottom: 10px; }
+  details.faq summary { font-weight: 700; cursor: pointer; }
+
+  /* Expedientes */
   .dato b { color: var(--suave); font-weight: 600; }
   .propuesta { margin: 12px 0; padding: 12px 14px; background: var(--fondo); border-radius: 8px; }
   .vence-pronto { background: var(--aviso); border-left: 6px solid var(--aviso-borde);
                   padding: 6px 10px; border-radius: 6px; margin: 8px 0; font-weight: 600; }
-  .botones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-  button { font: inherit; font-weight: 700; min-height: 56px; padding: 10px 22px;
-           border-radius: 10px; border: 3px solid transparent; cursor: pointer; color: #fff; }
-  button:focus-visible { outline: 4px solid #f2b705; outline-offset: 2px; }
-  .favor { background: var(--verde); } .contra { background: var(--rojo); }
-  .abst { background: var(--gris); } .principal { background: var(--azul); }
-  button.elegido { border-color: #111; box-shadow: 0 0 0 3px #f2b705; }
-  button:disabled { opacity: .55; cursor: wait; }
   .conteo { margin-top: 10px; color: var(--suave); }
   .mi-voto { margin-top: 8px; font-weight: 700; }
-  .estado { display: inline-block; padding: 2px 12px; border-radius: 99px; color: #fff; font-size: 18px; }
+  .estado { display: inline-block; padding: 2px 12px; border-radius: 99px; color: #fff; font-size: 17px;
+            font-weight: 700; vertical-align: middle; }
   .estado.Aprobado { background: var(--verde); } .estado.Rechazado { background: var(--rojo); }
+  .estado.Finalizado { background: var(--finalizado); }
   label { display: block; font-weight: 700; margin: 14px 0 6px; }
   input, select, textarea { font: inherit; width: 100%; padding: 12px; border: 2px solid var(--borde);
                             border-radius: 8px; background: #fff; color: var(--texto); }
   textarea { min-height: 90px; }
-  .mensaje { position: sticky; top: 0; z-index: 2; padding: 14px 18px; border-radius: 10px;
-             margin-bottom: 12px; font-weight: 700; display: none; }
+  .vacio { color: var(--suave); font-style: italic; }
+  details.cerrados summary { cursor: pointer; font-size: 26px; font-weight: 700; margin: 36px 0 12px; }
+
+  /* Tablero */
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 720px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tile { text-align: left; background: #fff; color: var(--texto); border: 2px solid var(--borde);
+          border-left: 10px solid var(--c); border-radius: 12px; padding: 14px; min-height: 0; font-weight: 400;
+          display: flex; flex-direction: column; justify-content: flex-start; }
+  .tile .n { font-size: 44px; font-weight: 800; line-height: 1.1; display: block; }
+  .tile .t { font-size: 20px; font-weight: 700; display: block; }
+  .tile .d { font-size: 16px; color: var(--suave); display: block; line-height: 1.3; }
+  .tile[aria-pressed="true"] { box-shadow: 0 0 0 4px #f2b705; }
+  .alerta { margin: 14px 0 0; padding: 12px 16px; border-radius: 10px; background: var(--aviso);
+            border-left: 8px solid var(--aviso-borde); font-weight: 700; }
+  .tabla-env { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+  th, td { padding: 12px 8px; text-align: center; border-bottom: 1px solid var(--borde); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: 17px; color: var(--suave); background: #fbfaf7; }
+  tbody tr:hover { background: #f3f6fa; }
+  td.cero { color: #b0aca3; }
+  tfoot td { font-weight: 800; }
+  .barra { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; min-width: 70px;
+           background: #eee; }
+  .barra span { background: var(--c); }
+  .marca { display: inline-block; width: 14px; height: 14px; border-radius: 3px; background: var(--c);
+           vertical-align: -1px; margin-right: 6px; }
+  .filtro { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 8px 0 12px; }
+  .filtro label { margin: 0 0 6px; }
+  .filtro > div { flex: 1; min-width: 220px; }
+  .fila-exp { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px;
+              padding: 12px 14px; background: #fff; border: 2px solid var(--borde);
+              border-left: 8px solid var(--c); border-radius: 10px; margin-bottom: 8px; }
+  .fila-exp .meta { color: var(--suave); font-size: 17px; }
+  .grupo h3 { margin: 22px 0 8px; }
+
+  .mensaje { position: fixed; left: 16px; right: 16px; bottom: 16px; max-width: 888px; margin: 0 auto;
+             z-index: 5; padding: 14px 18px; border-radius: 10px; font-weight: 700; display: none;
+             box-shadow: 0 4px 16px rgba(0,0,0,.18); }
   .mensaje.ok { display: block; background: #dff1e4; color: var(--verde); }
   .mensaje.error { display: block; background: #f8dede; color: var(--rojo); }
-  .vacio { color: var(--suave); font-style: italic; }
-  details summary { cursor: pointer; font-size: 25px; font-weight: 700; margin: 32px 0 12px; }
 </style>
 </head>
 <body>
 <main>
-  <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
-  <div id="app"><p>Cargando…</p></div>
+  <div id="app"><p style="padding-top:24px">Cargando…</p></div>
 </main>
+<div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
 
 <script>
 var datos = null;
+var vista = ['inicio', 'expedientes', 'tablero'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'inicio';
+var filtroResp = '';
+var filtroCat = '';
+
+var CATEGORIAS = [
+  { id: 'Pendiente', color: 'var(--pendiente)', desc: 'Nadie votó todavía' },
+  { id: 'En curso', color: 'var(--encurso)', desc: 'La votación está en marcha' },
+  { id: 'Terminado', color: 'var(--terminado)', desc: 'Ya se decidió: aprobado o rechazado' },
+  { id: 'Finalizado', color: 'var(--finalizado)', desc: 'Aprobado y ya hecho' }
+];
+function colorDe(cat) { return CATEGORIAS.filter(function (c) { return c.id === cat; })[0].color; }
 
 function esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
 }
 
@@ -71,7 +164,8 @@ function avisar(texto, tipo) {
   var m = document.getElementById('mensaje');
   m.textContent = texto;
   m.className = 'mensaje ' + tipo;
-  if (tipo === 'ok') setTimeout(function () { m.className = 'mensaje'; }, 6000);
+  clearTimeout(avisar.t);
+  avisar.t = setTimeout(function () { m.className = 'mensaje'; }, tipo === 'ok' ? 5000 : 10000);
 }
 
 function llamar(funcion, args, okTexto) {
@@ -84,6 +178,94 @@ function llamar(funcion, args, okTexto) {
     });
   r[funcion].apply(r, args);
 }
+
+function ir(v) { vista = v; dibujar(); window.scrollTo(0, 0); }
+
+// ------------------------------------------------------------------ Inicio
+
+function ficha(tipo) {
+  var s = { f: '✓', c: '✗', a: '–', n: '?' }[tipo];
+  var t = { f: 'a favor', c: 'en contra', a: 'abstención', n: 'sin votar' }[tipo];
+  return '<span class="ficha ' + tipo + '" title="' + t + '" aria-label="' + t + '">' + s + '</span>';
+}
+function ejemplo(fichas, texto) {
+  return '<div class="ejemplo"><span class="fichas">' + fichas.split('').map(ficha).join('') + '</span>' +
+    '<span class="flecha" aria-hidden="true">→</span><span class="que">' + texto + '</span></div>';
+}
+
+function vistaInicio() {
+  var porVotar = datos.expedientes.filter(function (e) { return e.estado === 'Abierto' && !e.miVoto; }).length;
+  var porHacer = datos.expedientes.filter(function (e) { return e.estado === 'Aprobado' && e.soyResponsable; }).length;
+  var n = datos.miembros.length;
+  return '' +
+  '<section class="hero">' +
+    '<h1>' + esc(datos.nombreOng) + '</h1>' +
+    '<p class="lema">Así tomamos las decisiones: cada tema queda escrito, cada uno vota, y la mayoría decide.</p>' +
+  '</section>' +
+  '<div class="reunion">Próxima reunión: <b>' + esc(datos.proximaReunion) + '</b></div>' +
+
+  '<div class="tarjeta">' +
+    '<h3>Hola, ' + esc(datos.yo.nombre) + '</h3>' +
+    '<p>' + (porVotar ? 'Tenés <b>' + porVotar + ' tema(s) esperando tu voto</b>.' : 'No tenés votos pendientes.') + '</p>' +
+    (porHacer ? '<p>Tenés <b>' + porHacer + ' tema(s) aprobado(s)</b> a tu cargo para hacer.</p>' : '') +
+    '<div class="botones">' +
+      '<button class="principal" onclick="ir(\'expedientes\')">Ir a votar</button>' +
+      '<button class="secundario" onclick="ir(\'tablero\')">Ver el tablero</button>' +
+    '</div>' +
+  '</div>' +
+
+  '<h2>Cómo se usa, en 4 pasos</h2>' +
+  '<ol class="pasos">' +
+    '<li><span class="num">1</span><div><b>Alguien abre un expediente.</b><br>' +
+      'Escribe el tema, qué hay que decidir, quién se encarga y para cuándo.</div></li>' +
+    '<li><span class="num">2</span><div><b>Cada uno vota.</b><br>' +
+      'A favor, En contra o Abstención. Se puede votar en la reunión del viernes o durante la semana, ' +
+      'y se puede cambiar el voto mientras el tema esté abierto.</div></li>' +
+    '<li><span class="num">3</span><div><b>El sistema cuenta y avisa.</b><br>' +
+      'Cuando hay mayoría, el tema se cierra solo y les llega un mail a todos.</div></li>' +
+    '<li><span class="num">4</span><div><b>El responsable lo hace.</b><br>' +
+      'Cuando termina, toca el botón <b>"Ya lo hice"</b> y el tema queda finalizado.</div></li>' +
+  '</ol>' +
+
+  '<h2>Cómo decidimos</h2>' +
+  '<p class="regla">Un tema se decide con ' + datos.mayoria + ' votos iguales de ' + n + '.</p>' +
+  '<p>No alcanza con la mayoría de los que votaron: siempre hacen falta ' + datos.mayoria +
+    ' personas de acuerdo. Así ninguna decisión sale con solo dos.</p>' +
+  '<div class="ejemplos" role="list">' +
+    ejemplo('fffc', 'Aprobado') +
+    ejemplo('fffn', 'Aprobado (no hace falta esperar al cuarto)') +
+    ejemplo('cccf', 'Rechazado') +
+    ejemplo('ffcc', 'Empate: se vuelve a votar el viernes siguiente') +
+    ejemplo('ffaa', 'Sin mayoría: se vuelve a votar el viernes siguiente') +
+    ejemplo('ffcn', 'Todavía abierto: falta un voto') +
+  '</div>' +
+  '<p class="suave">✓ a favor · ✗ en contra · – abstención · ? todavía no votó</p>' +
+
+  '<h2>El camino de un expediente</h2>' +
+  '<div class="ciclo">' + CATEGORIAS.map(function (c, i) {
+    return '<div class="etapa" style="--c:' + c.color + '"><b>' + (i + 1) + '. ' + c.id + '</b><span>' + c.desc + '</span></div>';
+  }).join('') + '</div>' +
+  '<p class="suave">Un tema rechazado queda en "Terminado": se decidió no hacerlo.</p>' +
+
+  '<h2>Avisos por mail</h2>' +
+  '<ul>' +
+    '<li>Al responsable, <b>2 días antes</b> de que venza su expediente.</li>' +
+    '<li>A todos, <b>el día antes de la reunión</b>, con la lista de temas abiertos.</li>' +
+    '<li>A todos, cuando un tema <b>se decide</b>, queda <b>sin mayoría</b> o se <b>termina de hacer</b>.</li>' +
+  '</ul>' +
+
+  '<h2>Preguntas frecuentes</h2>' +
+  '<details class="faq"><summary>¿Puedo cambiar mi voto?</summary><p>Sí, mientras el tema siga abierto. ' +
+    'Una vez que hay ' + datos.mayoria + ' votos iguales, el tema se cierra y ya no se puede cambiar.</p></details>' +
+  '<details class="faq"><summary>¿Qué pasa si no puedo ir a la reunión?</summary><p>Podés votar desde tu casa ' +
+    'cuando quieras, entrando a esta misma página.</p></details>' +
+  '<details class="faq"><summary>¿Los demás ven lo que voté?</summary><p>Sí. El voto es a la vista de los ' + n +
+    ' miembros, como en una reunión. Nadie de afuera puede verlo.</p></details>' +
+  '<details class="faq"><summary>Me equivoqué al crear un expediente</summary><p>Avisale a quien administra la ' +
+    'planilla y lo corrige ahí.</p></details>';
+}
+
+// ------------------------------------------------------------- Expedientes
 
 function textoVencimiento(e) {
   if (e.diasParaVencer === null) return '';
@@ -120,39 +302,49 @@ function tarjetaAbierta(e) {
   '</article>';
 }
 
+function tarjetaAprobada(e) {
+  var pronto = textoVencimiento(e);
+  return '<article class="tarjeta">' +
+    '<h3>#' + e.numero + ' — ' + esc(e.tema) + ' <span class="estado Aprobado">Aprobado</span></h3>' +
+    '<p class="dato"><b>Hay que hacer:</b> ' + esc(e.propuesta) + '</p>' +
+    '<p class="dato"><b>Responsable:</b> ' + esc(e.responsable) + (e.soyResponsable ? ' (vos)' : '') +
+      ' · <b>Vence:</b> ' + esc(e.vencimiento) + '</p>' +
+    (pronto ? '<p class="vence-pronto">' + pronto + '</p>' : '') +
+    (e.soyResponsable
+      ? '<div class="botones"><button class="favor" onclick="hecho(' + e.numero + ')">Ya lo hice</button></div>'
+      : '<p class="suave">Cuando ' + esc(e.responsable) + ' lo termine, va a marcarlo como hecho.</p>') +
+  '</article>';
+}
+
 function tarjetaCerrada(e) {
   return '<article class="tarjeta">' +
     '<h3>#' + e.numero + ' — ' + esc(e.tema) + ' <span class="estado ' + esc(e.estado) + '">' +
       esc(e.estado) + '</span></h3>' +
     '<p class="dato"><b>Se votó:</b> ' + esc(e.propuesta) + '</p>' +
     '<p class="dato"><b>Resultado:</b> ' + esc(e.resultado) + '</p>' +
-    '<p class="dato"><b>Responsable:</b> ' + esc(e.responsable) + '</p>' +
+    '<p class="dato"><b>Responsable:</b> ' + esc(e.responsable) +
+      (e.finalizadoEl ? ' · <b>Hecho el:</b> ' + esc(e.finalizadoEl) : '') + '</p>' +
   '</article>';
 }
 
-function dibujar() {
-  var app = document.getElementById('app');
-  if (!datos.acceso) {
-    app.innerHTML = '<header><h1>' + esc(datos.nombreOng) + '</h1></header>' +
-      '<div class="tarjeta"><p>La cuenta <b>' + esc(datos.email || '(sin identificar)') +
-      '</b> no está en la lista de miembros.</p><p>Pedile a quien administra la planilla que te agregue ' +
-      'en la hoja "Miembros".</p></div>';
-    return;
-  }
+function vistaExpedientes() {
   var abiertos = datos.expedientes.filter(function (e) { return e.estado === 'Abierto'; });
-  var cerrados = datos.expedientes.filter(function (e) { return e.estado !== 'Abierto'; }).reverse();
+  var aprobados = datos.expedientes.filter(function (e) { return e.estado === 'Aprobado'; });
+  var cerrados = datos.expedientes.filter(function (e) {
+    return e.estado === 'Rechazado' || e.estado === 'Finalizado';
+  }).reverse();
   var opciones = datos.miembros.map(function (m) {
     return '<option value="' + esc(m.email) + '">' + esc(m.nombre || m.email) + '</option>';
   }).join('');
   var hoy = new Date();
   var minimo = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-  app.innerHTML =
-    '<header><h1>' + esc(datos.nombreOng) + '</h1><p>Hola, ' + esc(datos.yo.nombre) + '</p></header>' +
-    '<div class="reunion">Próxima reunión: <b>' + esc(datos.proximaReunion) + '</b></div>' +
-
-    '<h2>Temas abiertos para votar (' + abiertos.length + ')</h2>' +
+  return '<div class="reunion">Próxima reunión: <b>' + esc(datos.proximaReunion) + '</b></div>' +
+    '<h2>Para votar (' + abiertos.length + ')</h2>' +
     (abiertos.length ? abiertos.map(tarjetaAbierta).join('') : '<p class="vacio">No hay temas abiertos.</p>') +
+
+    '<h2>Aprobados, falta hacerlos (' + aprobados.length + ')</h2>' +
+    (aprobados.length ? aprobados.map(tarjetaAprobada).join('') : '<p class="vacio">No hay nada aprobado pendiente de hacer.</p>') +
 
     '<h2>Nuevo expediente</h2>' +
     '<form class="tarjeta" onsubmit="crear(event)">' +
@@ -164,14 +356,132 @@ function dibujar() {
       '<div class="botones"><button class="principal" type="submit">Crear expediente</button></div>' +
     '</form>' +
 
-    '<details><summary>Temas cerrados (' + cerrados.length + ')</summary>' +
-      (cerrados.length ? cerrados.map(tarjetaCerrada).join('') : '<p class="vacio">Todavía no hay temas cerrados.</p>') +
+    '<details class="cerrados"><summary>Rechazados y finalizados (' + cerrados.length + ')</summary>' +
+      (cerrados.length ? cerrados.map(tarjetaCerrada).join('') : '<p class="vacio">Todavía no hay.</p>') +
     '</details>';
+}
+
+// ----------------------------------------------------------------- Tablero
+
+function vistaTablero() {
+  var exps = datos.expedientes;
+  var vencidos = exps.filter(function (e) {
+    return (e.estado === 'Abierto' || e.estado === 'Aprobado') && e.diasParaVencer !== null && e.diasParaVencer < 0;
+  });
+
+  var tiles = CATEGORIAS.map(function (c) {
+    var n = exps.filter(function (e) { return e.categoria === c.id; }).length;
+    return '<button class="tile" style="--c:' + c.color + '" aria-pressed="' + (filtroCat === c.id) + '" ' +
+      'onclick="filtrarCat(\'' + c.id + '\')"><span class="n">' + n + '</span><span class="t">' + c.id +
+      '</span><span class="d">' + c.desc + '</span></button>';
+  }).join('');
+
+  // Por responsable
+  var filas = datos.miembros.map(function (m) {
+    var suyos = exps.filter(function (e) { return e.responsableEmail === m.email; });
+    var cuenta = {};
+    CATEGORIAS.forEach(function (c) { cuenta[c.id] = suyos.filter(function (e) { return e.categoria === c.id; }).length; });
+    return {
+      nombre: m.nombre || m.email,
+      cuenta: cuenta,
+      total: suyos.length,
+      abrio: exps.filter(function (e) { return e.creadoPorEmail === m.email; }).length,
+      vencidos: vencidos.filter(function (e) { return e.responsableEmail === m.email; }).length
+    };
+  });
+  var maxTotal = Math.max.apply(null, filas.map(function (f) { return f.total; }).concat([1]));
+  function celda(n) { return '<td class="' + (n ? '' : 'cero') + '">' + n + '</td>'; }
+  var tabla = '<div class="tabla-env"><table>' +
+    '<caption class="suave" style="text-align:left;padding:0 0 8px">Expedientes a cargo de cada uno, por estado</caption>' +
+    '<thead><tr><th scope="col">Responsable</th>' +
+      CATEGORIAS.map(function (c) { return '<th scope="col"><span class="marca" style="--c:' + c.color + '"></span>' + c.id + '</th>'; }).join('') +
+      '<th scope="col">Total</th><th scope="col">Vencidos</th><th scope="col">Abrió</th><th scope="col">Distribución</th></tr></thead><tbody>' +
+    filas.map(function (f) {
+      var barra = '<div class="barra" style="width:' + Math.round(40 + 60 * f.total / maxTotal) + '%" ' +
+        'title="' + CATEGORIAS.map(function (c) { return c.id + ': ' + f.cuenta[c.id]; }).join(' · ') + '">' +
+        CATEGORIAS.map(function (c) {
+          return f.cuenta[c.id] ? '<span style="--c:' + c.color + ';flex:' + f.cuenta[c.id] + '"></span>' : '';
+        }).join('') + '</div>';
+      return '<tr><th scope="row">' + esc(f.nombre) + '</th>' +
+        CATEGORIAS.map(function (c) { return celda(f.cuenta[c.id]); }).join('') +
+        '<td><b>' + f.total + '</b></td>' + celda(f.vencidos) + celda(f.abrio) +
+        '<td>' + (f.total ? barra : '') + '</td></tr>';
+    }).join('') +
+    '</tbody><tfoot><tr><td>Total</td>' +
+      CATEGORIAS.map(function (c) { return '<td>' + exps.filter(function (e) { return e.categoria === c.id; }).length + '</td>'; }).join('') +
+      '<td>' + exps.length + '</td><td>' + vencidos.length + '</td><td>' + exps.length + '</td><td></td></tr></tfoot>' +
+    '</table></div>' +
+    '<p class="suave"><b>Abrió:</b> cuántos expedientes creó cada uno. <b>Vencidos:</b> pasó la fecha y todavía no está hecho.</p>';
+
+  // Lista filtrable
+  var opciones = '<option value="">Todos</option>' + datos.miembros.map(function (m) {
+    return '<option value="' + esc(m.email) + '"' + (filtroResp === m.email ? ' selected' : '') + '>' +
+      esc(m.nombre || m.email) + '</option>';
+  }).join('');
+  var lista = exps.filter(function (e) {
+    return (!filtroResp || e.responsableEmail === filtroResp) && (!filtroCat || e.categoria === filtroCat);
+  });
+  var grupos = CATEGORIAS.filter(function (c) { return !filtroCat || filtroCat === c.id; }).map(function (c) {
+    var items = lista.filter(function (e) { return e.categoria === c.id; });
+    return '<div class="grupo"><h3><span class="marca" style="--c:' + c.color + '"></span>' + c.id + ' (' + items.length + ')</h3>' +
+      (items.length ? items.map(function (e) {
+        var extra = e.categoria === 'Terminado' ? ' — ' + e.estado
+          : e.categoria === 'Finalizado' ? ' — hecho el ' + e.finalizadoEl
+          : e.categoria === 'En curso' ? ' — ' + e.conteo.favor + ' a favor, ' + e.conteo.contra + ' en contra, faltan ' + e.conteo.faltan
+          : '';
+        var venc = textoVencimiento(e);
+        return '<div class="fila-exp" style="--c:' + c.color + '"><div><b>#' + e.numero + ' — ' + esc(e.tema) + '</b>' + esc(extra) + '</div>' +
+          '<div class="meta">' + esc(e.responsable) + ' · vence ' + esc(e.vencimiento) +
+          (venc && e.categoria !== 'Finalizado' && e.estado !== 'Rechazado' ? ' · <b>' + venc + '</b>' : '') + '</div></div>';
+      }).join('') : '<p class="vacio">Ninguno.</p>') + '</div>';
+  }).join('');
+
+  return '<h2 style="margin-top:20px">Tablero de expedientes</h2>' +
+    '<p class="suave">Tocá un recuadro para ver solo esos expedientes.</p>' +
+    '<div class="tiles">' + tiles + '</div>' +
+    (vencidos.length ? '<p class="alerta">⚠ ' + vencidos.length + ' expediente(s) vencido(s) sin terminar: ' +
+      vencidos.map(function (e) { return '#' + e.numero + ' (' + esc(e.responsable) + ')'; }).join(', ') + '</p>' : '') +
+    '<h2>Por responsable</h2>' + tabla +
+    '<h2>Detalle</h2>' +
+    '<div class="filtro"><div><label for="filtroResp">Responsable</label><select id="filtroResp" onchange="filtrarResp(this.value)">' +
+      opciones + '</select></div>' +
+      (filtroCat || filtroResp ? '<button class="secundario" onclick="limpiar()">Ver todos</button>' : '') + '</div>' +
+    grupos;
+}
+
+function filtrarCat(c) { filtroCat = filtroCat === c ? '' : c; dibujar(); }
+function filtrarResp(r) { filtroResp = r; dibujar(); }
+function limpiar() { filtroCat = ''; filtroResp = ''; dibujar(); }
+
+// ------------------------------------------------------------------- Marco
+
+function dibujar() {
+  var app = document.getElementById('app');
+  if (!datos.acceso) {
+    app.innerHTML = '<section class="hero"><h1>' + esc(datos.nombreOng) + '</h1></section>' +
+      '<div class="tarjeta"><p>La cuenta <b>' + esc(datos.email || '(sin identificar)') +
+      '</b> no está en la lista de miembros.</p><p>Pedile a quien administra la planilla que te agregue ' +
+      'en la hoja "Miembros".</p></div>';
+    return;
+  }
+  var porVotar = datos.expedientes.filter(function (e) { return e.estado === 'Abierto' && !e.miVoto; }).length;
+  function pestaña(id, texto) {
+    return '<button onclick="ir(\'' + id + '\')"' + (vista === id ? ' aria-current="page"' : '') + '>' + texto + '</button>';
+  }
+  var cuerpo = vista === 'expedientes' ? vistaExpedientes() : vista === 'tablero' ? vistaTablero() : vistaInicio();
+  app.innerHTML = '<nav aria-label="Secciones">' + pestaña('inicio', 'Inicio') +
+    pestaña('expedientes', 'Votar' + (porVotar ? ' (' + porVotar + ')' : '')) + pestaña('tablero', 'Tablero') +
+    '</nav>' + cuerpo;
 }
 
 function votar(numero, voto) {
   if (!confirm('¿Confirmás tu voto "' + voto + '" en el expediente #' + numero + '?')) return;
   llamar('votar', [numero, voto], 'Voto registrado: ' + voto);
+}
+
+function hecho(numero) {
+  if (!confirm('¿Confirmás que el expediente #' + numero + ' ya está hecho?')) return;
+  llamar('marcarHecho', [numero], '¡Listo! El expediente #' + numero + ' quedó finalizado.');
 }
 
 function crear(ev) {
@@ -182,7 +492,7 @@ function crear(ev) {
     responsable: document.getElementById('responsable').value,
     vencimiento: document.getElementById('vencimiento').value,
     notas: document.getElementById('notas').value
-  }], 'Expediente creado. Ya aparece arriba para votar.');
+  }], 'Expediente creado. Ya aparece para votar.');
 }
 
 window.onload = function () {

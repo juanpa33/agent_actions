@@ -10,6 +10,12 @@
  *     miembros (con 4 miembros: 3 votos), sin importar cuántos votaron.
  *   - Si votaron todos y ninguna opción llegó a la mayoría (por ejemplo 2 a 2),
  *     el tema queda abierto y se vuelve a votar en la reunión siguiente.
+ *
+ * Ciclo de un expediente (decidir y después hacer):
+ *   Pendiente   abierto, nadie votó todavía en la ronda actual
+ *   En curso    abierto, la votación está en marcha
+ *   Terminado   ya se decidió: Aprobado o Rechazado
+ *   Finalizado  estaba aprobado y el responsable marcó que ya lo hizo
  */
 
 var HOJAS = {
@@ -24,7 +30,8 @@ var COLUMNAS = {
   Configuracion: ['Clave', 'Valor', 'Explicación'],
   Miembros: ['Nombre', 'Email'],
   Expedientes: ['Número', 'Tema', 'Propuesta a votar', 'Responsable (email)', 'Vencimiento',
-                'Estado', 'Ronda', 'Creado por', 'Creado el', 'Notas', 'Aviso enviado', 'Resultado'],
+                'Estado', 'Ronda', 'Creado por', 'Creado el', 'Notas', 'Aviso enviado', 'Resultado',
+                'Finalizado el'],
   Votos: ['Expediente', 'Ronda', 'Email', 'Voto', 'Fecha'],
   Historial: ['Fecha', 'Email', 'Acción', 'Detalle']
 };
@@ -39,6 +46,7 @@ var CONFIG_INICIAL = [
 
 var VOTOS_VALIDOS = ['A favor', 'En contra', 'Abstención'];
 var ESTADO_ABIERTO = 'Abierto';
+var ESTADO_FINALIZADO = 'Finalizado';
 
 // ---------------------------------------------------------------------------
 // Lógica pura (sin Google): se prueba con node en pruebas/prueba_logica.js
@@ -73,6 +81,18 @@ function resolverVotacion(votos, totalMiembros) {
   return r;
 }
 
+/**
+ * Categoría del tablero para un expediente.
+ * @param {string} estado  valor de la columna Estado
+ * @param {number} votosEnRonda  cuántos votaron en la ronda actual
+ * @return {'Pendiente'|'En curso'|'Terminado'|'Finalizado'}
+ */
+function categoria(estado, votosEnRonda) {
+  if (estado === ESTADO_FINALIZADO) return 'Finalizado';
+  if (estado === 'Aprobado' || estado === 'Rechazado') return 'Terminado';
+  return votosEnRonda > 0 ? 'En curso' : 'Pendiente';
+}
+
 /** Fecha sin hora (medianoche del mismo día). */
 function soloFecha(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -102,7 +122,8 @@ function proximaReunion(desde, diaReunion, hora) {
 
 /** ¿Hay que avisarle hoy al responsable de este expediente? */
 function debeAvisarVencimiento(exp, hoy, diasAviso) {
-  if (exp.estado !== ESTADO_ABIERTO) return false;
+  // Se avisa mientras se vota y también si ya se aprobó pero todavía no se hizo.
+  if (exp.estado !== ESTADO_ABIERTO && exp.estado !== 'Aprobado') return false;
   if (!(exp.vencimiento instanceof Date)) return false;
   if (exp.avisoEnviado) return false;
   var dias = diasEntre(hoy, exp.vencimiento);
@@ -198,7 +219,13 @@ function obtenerDatos() {
       tema: e.tema,
       propuesta: e.propuesta,
       responsable: nombreDe_(miembros, e.responsable),
+      responsableEmail: e.responsable,
       soyResponsable: e.responsable === yo.email,
+      creadoPor: nombreDe_(miembros, e.creadoPor),
+      creadoPorEmail: e.creadoPor,
+      creadoEl: e.creadoEl ? Utilities.formatDate(e.creadoEl, tz, 'dd/MM/yyyy') : '',
+      finalizadoEl: e.finalizadoEl ? Utilities.formatDate(e.finalizadoEl, tz, 'dd/MM/yyyy') : '',
+      categoria: categoria(e.estado, deRonda.length),
       vencimiento: e.vencimiento ? Utilities.formatDate(e.vencimiento, tz, 'dd/MM/yyyy') : '',
       diasParaVencer: e.vencimiento ? diasEntre(hoy, e.vencimiento) : null,
       estado: e.estado,
@@ -244,7 +271,7 @@ function crearExpediente(datos) {
     var hoja = hoja_(HOJAS.EXPEDIENTES);
     var numero = leerExpedientes_().reduce(function (max, e) { return Math.max(max, e.numero); }, 0) + 1;
     hoja.appendRow([numero, tema, propuesta, responsable, venc, ESTADO_ABIERTO, 1,
-                    yo.email, new Date(), String(datos.notas || '').trim(), '', '']);
+                    yo.email, new Date(), String(datos.notas || '').trim(), '', '', '']);
     registrar_(yo.email, 'Nuevo expediente', '#' + numero + ' ' + tema);
   } finally {
     lock.releaseLock();
@@ -309,6 +336,30 @@ function votar(numero, voto) {
         '</b> no alcanzó mayoría (' + resumen + ').</p><p>Se vuelve a votar en la reunión del ' +
         fechaReunion + '.</p>');
     }
+  } finally {
+    lock.releaseLock();
+  }
+  return obtenerDatos();
+}
+
+/** El responsable de un expediente aprobado marca que ya lo hizo. */
+function marcarHecho(numero) {
+  var yo = exigirMiembro_();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var exp = leerExpedientes_().filter(function (e) { return e.numero === Number(numero); })[0];
+    if (!exp) throw new Error('No encuentro el expediente #' + numero + '.');
+    if (exp.estado !== 'Aprobado') throw new Error('Solo se puede marcar como hecho un tema aprobado.');
+    if (exp.responsable !== yo.email) throw new Error('Solo el responsable puede marcarlo como hecho.');
+    var hoja = hoja_(HOJAS.EXPEDIENTES);
+    hoja.getRange(exp.fila, 6).setValue(ESTADO_FINALIZADO);
+    hoja.getRange(exp.fila, 13).setValue(new Date());
+    registrar_(yo.email, 'Finalizado', '#' + exp.numero + ' ' + exp.tema);
+    var miembros = leerMiembros_();
+    avisarATodos_(miembros, 'Hecho: ' + exp.tema,
+      '<p>' + escapar_(nombreDe_(miembros, yo.email)) + ' marcó como <b>hecho</b> el expediente <b>#' +
+      exp.numero + ' — ' + escapar_(exp.tema) + '</b>.</p>');
   } finally {
     lock.releaseLock();
   }
@@ -406,9 +457,12 @@ function leerExpedientes_() {
       vencimiento: f[4] instanceof Date ? f[4] : null,
       estado: String(f[5]) || ESTADO_ABIERTO,
       ronda: Number(f[6]) || 1,
+      creadoPor: String(f[7]).trim().toLowerCase(),
+      creadoEl: f[8] instanceof Date ? f[8] : null,
       notas: String(f[9]),
       avisoEnviado: f[10] !== '',
-      resultado: String(f[11])
+      resultado: String(f[11]),
+      finalizadoEl: f[12] instanceof Date ? f[12] : null
     };
   }).filter(function (e) { return e.numero > 0; });
 }
@@ -469,5 +523,5 @@ function escapar_(s) {
 if (typeof module !== 'undefined') {
   module.exports = { mayoriaNecesaria: mayoriaNecesaria, resolverVotacion: resolverVotacion,
     diasEntre: diasEntre, proximaReunion: proximaReunion,
-    debeAvisarVencimiento: debeAvisarVencimiento, esDiaDeAvisoReunion: esDiaDeAvisoReunion };
+    debeAvisarVencimiento: debeAvisarVencimiento, categoria: categoria, esDiaDeAvisoReunion: esDiaDeAvisoReunion };
 }
