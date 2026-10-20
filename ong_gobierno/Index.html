@@ -141,7 +141,17 @@
 <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
 
 <script>
+// Clave personal: viene en el enlace del mail (?c=...) o la escribe la persona.
+var CLAVE_ENLACE = '<?= clave ?>';
+var CLAVE = CLAVE_ENLACE || leerClaveGuardada();
 var datos = null;
+
+function leerClaveGuardada() {
+  try { return localStorage.getItem('ong_clave') || ''; } catch (e) { return ''; }
+}
+function guardarClave(c) {
+  try { if (c) localStorage.setItem('ong_clave', c); else localStorage.removeItem('ong_clave'); } catch (e) {}
+}
 var vista = ['inicio', 'expedientes', 'tablero'].indexOf(location.hash.slice(1)) >= 0 ? location.hash.slice(1) : 'inicio';
 var filtroResp = '';
 var filtroCat = '';
@@ -176,7 +186,7 @@ function llamar(funcion, args, okTexto) {
       document.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
       avisar('No se pudo: ' + (e && e.message ? e.message : e), 'error');
     });
-  r[funcion].apply(r, args);
+  r[funcion].apply(r, [CLAVE].concat(args));
 }
 
 function ir(v) { vista = v; dibujar(); window.scrollTo(0, 0); }
@@ -458,14 +468,21 @@ function limpiar() { filtroCat = ''; filtroResp = ''; dibujar(); }
 function dibujar() {
   var app = document.getElementById('app');
   if (!datos.acceso) {
-    app.innerHTML = '<section class="hero"><h1>' + esc(datos.nombreOng) + '</h1></section>' +
-      '<div class="tarjeta"><p>La cuenta <b>' + esc(datos.email || '(sin identificar)') +
-      '</b> no está en la lista de miembros.</p><p>Pedile a quien administra la planilla que te agregue ' +
-      'en la hoja "Miembros".</p>' +
-      (datos.diagnostico ? '<p class="suave" style="font-size:15px">Datos técnicos: ' + esc(datos.diagnostico) + '</p>' : '') +
-      '</div>';
+    guardarClave('');
+    app.innerHTML = '<section class="hero"><h1>' + esc(datos.nombreOng) + '</h1>' +
+      '<p class="lema">Sistema de expedientes y votaciones</p></section>' +
+      '<form class="tarjeta" onsubmit="entrar(event)">' +
+        (datos.claveEscrita ? '<p class="vence-pronto">Esa clave no es correcta. Revisala en el mail y probá de nuevo.</p>' : '') +
+        '<p>Para entrar, usá el <b>enlace personal</b> que te llegó por mail, o escribí tu <b>clave personal</b> (está en el mismo mail).</p>' +
+        '<label for="clave">Clave personal</label>' +
+        '<input id="clave" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" ' +
+          'style="font-size:26px;letter-spacing:3px;text-transform:uppercase" required>' +
+        '<div class="botones"><button class="principal" type="submit">Entrar</button></div>' +
+        '<p class="suave">¿No tenés la clave? Pedile a quien administra el sistema que te la reenvíe.</p>' +
+      '</form>';
     return;
   }
+  guardarClave(CLAVE);
   var porVotar = datos.expedientes.filter(function (e) { return e.estado === 'Abierto' && !e.miVoto; }).length;
   function pestaña(id, texto) {
     return '<button onclick="ir(\'' + id + '\')"' + (vista === id ? ' aria-current="page"' : '') + '>' + texto + '</button>';
@@ -473,7 +490,9 @@ function dibujar() {
   var cuerpo = vista === 'expedientes' ? vistaExpedientes() : vista === 'tablero' ? vistaTablero() : vistaInicio();
   app.innerHTML = '<nav aria-label="Secciones">' + pestaña('inicio', 'Inicio') +
     pestaña('expedientes', 'Votar' + (porVotar ? ' (' + porVotar + ')' : '')) + pestaña('tablero', 'Tablero') +
-    '</nav>' + cuerpo;
+    '</nav>' + cuerpo +
+    '<p class="suave" style="margin-top:40px">Entraste como ' + esc(datos.yo.nombre) +
+    '. <a href="#" onclick="salir();return false">Salir</a> (si la computadora es compartida).</p>';
 }
 
 function votar(numero, voto) {
@@ -497,12 +516,26 @@ function crear(ev) {
   }], 'Expediente creado. Ya aparece para votar.');
 }
 
-window.onload = function () {
+function cargar() {
   google.script.run
     .withSuccessHandler(function (d) { datos = d; dibujar(); })
     .withFailureHandler(function (e) { avisar('No se pudo cargar: ' + (e && e.message ? e.message : e), 'error'); })
-    .obtenerDatos();
-};
+    .obtenerDatos(CLAVE);
+}
+
+function entrar(ev) {
+  ev.preventDefault();
+  CLAVE = document.getElementById('clave').value.replace(/[\s-]/g, '').toUpperCase();
+  cargar();
+}
+
+function salir() {
+  guardarClave('');
+  CLAVE = '';
+  cargar();
+}
+
+window.onload = cargar;
 </script>
 </body>
 </html>

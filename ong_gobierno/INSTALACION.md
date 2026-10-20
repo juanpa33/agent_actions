@@ -34,7 +34,19 @@ Estados del tablero (decidir y después hacer):
 Los aprobados siguen recibiendo el aviso de vencimiento hasta que se marcan
 como hechos.
 
-Los datos quedan en una planilla de Google, compartida solo con ustedes cuatro.
+Los datos quedan en una planilla de Google de quien instala el sistema. **No
+hace falta compartirla**: la página funciona con la cuenta de quien la instaló.
+
+### Cómo entra cada miembro
+
+Cada uno tiene una **clave personal** (8 letras y números) y recibe por mail un
+**enlace personal** que ya la trae. Con ese enlace entra directo, sin iniciar
+sesión en Google ni aceptar permisos. Si entra desde Google Sites o desde otro
+dispositivo, la página le pide la clave una vez y la recuerda.
+
+Quien tenga el enlace o la clave de una persona puede votar en su nombre: no se
+reenvían. Si una clave se filtra, se borra en la hoja **Miembros** y se usa
+**ONG → Instalar / reparar** para generar una nueva.
 
 ## Instalación (una sola vez, unos 15 minutos)
 
@@ -48,38 +60,35 @@ La hace quien es dueña de la cuenta, desde una computadora.
    lo que trae y pegá el contenido de **`Index.html`**.
 5. Engranaje **Configuración del proyecto** → tildá **"Mostrar el archivo de
    manifiesto appsscript.json"**. Volvé al editor, abrí `appsscript.json` y
-   reemplazalo por el contenido de **`appsscript.json`**.
-6. Guardá (ícono del disquete). Arriba elegí la función **`instalar`** y tocá
-   **Ejecutar**. Google va a pedir permisos: **Revisar permisos → tu cuenta →
-   Configuración avanzada → Ir a … (no seguro) → Permitir**. Es tu propio
-   programa: el aviso es normal.
-7. Volvé a la planilla:
-   - Hoja **Miembros**: poné nombre y mail (de Google) de los 4.
-   - Hoja **Configuracion**: nombre de la ONG y hora de la reunión
-     (`19:30` o `20:00`).
-8. **Compartir** la planilla con los otros 3 mails, como **Editor**. Esto hace
-   falta para que puedan votar desde la página.
-9. En Apps Script: **Implementar → Nueva implementación → Aplicación web**.
-   - Ejecutar como: **Usuario que accede a la aplicación web**.
-   - Quién tiene acceso: **Cualquier usuario con cuenta de Google**.
+   reemplazalo por el contenido de **`appsscript.json`**. Guardá.
+6. Volvé a la planilla, recargala (F5) y usá el menú **ONG → Instalar /
+   reparar**. Google pide permisos: **tu cuenta → Configuración avanzada → Ir
+   a … (no seguro) → Permitir**. Es tu propio programa: el aviso es normal. Si
+   solo autorizó, volvé a tocar **Instalar / reparar**.
+7. En la planilla:
+   - Hoja **Miembros**: nombre y mail de los 4. La columna **Clave personal** se
+     completa sola (si agregás a alguien después, usá de nuevo Instalar / reparar).
+   - Hoja **Configuracion**: nombre de la ONG y hora de la reunión.
+8. En Apps Script: **Implementar → Nueva implementación → Aplicación web**.
+   - Ejecutar como: **Yo**.
+   - Quién tiene acceso: **Cualquier usuario**. Si tu cuenta es de una empresa
+     y esa opción no aparece, elegí la más amplia que haya.
    - **Implementar** y copiá la **URL** que termina en `/exec`.
-
-Aunque cualquiera con esa URL puede abrir la página, solo ven y votan los mails
-que están en la hoja **Miembros**. Al resto le aparece "no está en la lista".
+9. Pegá esa URL en la hoja **Configuracion**, fila **URL_APP**, columna Valor.
+10. Menú **ONG → Enviar enlaces personales**. A cada miembro le llega su enlace
+    y su clave.
 
 ## Ponerlo en Google Sites
 
 1. En [sites.google.com](https://sites.google.com) creá un sitio (o abrí el de la ONG).
-2. **Insertar → Insertar (Embed) → Por URL** y pegá la URL `/exec`.
+2. **Insertar → Insertar (Embed) → Por URL** y pegá la URL `/exec` (sin clave).
    Agrandá el cuadro para que ocupe la página.
 3. Agregá también un **Botón** con el texto *"Abrir en pantalla completa"* y la
-   misma URL. Es útil en el celular, o si el cuadro pide iniciar sesión.
+   misma URL. Es útil en el celular.
 4. En **Compartir** del sitio, restringí quién puede verlo a ustedes cuatro.
 5. **Publicar**.
 
-**La primera vez** que cada miembro entra, Google le pide permiso. Conviene
-abrir la URL `/exec` directamente (no desde el sitio), aceptar, y a partir de
-ahí usar el sitio normalmente.
+Desde el sitio, la primera vez cada uno escribe su clave personal.
 
 ## Probar antes de usarlo en serio
 
@@ -102,9 +111,9 @@ cambia.
 
 ## Limitaciones de esta versión
 
-- Como los 4 son editores de la planilla, alguien podría modificar a mano un
-  voto en la hoja. El **Historial** registra los votos hechos desde la página,
-  así que una diferencia se nota. Si hace falta, más adelante se puede blindar.
+- Quien administra la planilla podría modificar un voto a mano. El
+  **Historial** registra cada voto hecho desde la página, así que una
+  diferencia se nota.
 - Todavía **no** incluye: aportes y reportes, temario trimestral/mensual/semanal,
   adjuntar documentos, ni la parte de IA.
 

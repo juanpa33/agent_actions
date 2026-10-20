@@ -11,6 +11,10 @@
  *   - Si votaron todos y ninguna opción llegó a la mayoría (por ejemplo 2 a 2),
  *     el tema queda abierto y se vuelve a votar en la reunión siguiente.
  *
+ * Acceso: cada miembro entra con su enlace personal (o escribe su clave personal).
+ * La aplicación corre con la cuenta de quien la instaló, así que los demás no
+ * necesitan permisos de Google ni acceso a la planilla.
+ *
  * Ciclo de un expediente (decidir y después hacer):
  *   Pendiente   abierto, nadie votó todavía en la ronda actual
  *   En curso    abierto, la votación está en marcha
@@ -28,7 +32,7 @@ var HOJAS = {
 
 var COLUMNAS = {
   Configuracion: ['Clave', 'Valor', 'Explicación'],
-  Miembros: ['Nombre', 'Email'],
+  Miembros: ['Nombre', 'Email', 'Clave personal'],
   Expedientes: ['Número', 'Tema', 'Propuesta a votar', 'Responsable (email)', 'Vencimiento',
                 'Estado', 'Ronda', 'Creado por', 'Creado el', 'Notas', 'Aviso enviado', 'Resultado',
                 'Finalizado el'],
@@ -41,8 +45,11 @@ var CONFIG_INICIAL = [
   ['DIA_REUNION', '5', 'Día de la reunión: 1=lunes ... 5=viernes ... 7=domingo'],
   ['HORA_REUNION', '19:30', 'Hora de la reunión (por ejemplo 19:30 o 20:00)'],
   ['DIAS_AVISO_VENCIMIENTO', '2', 'Cuántos días antes del vencimiento se avisa al responsable'],
-  ['DIAS_AVISO_REUNION', '1', 'Cuántos días antes de la reunión se manda el recordatorio a todos']
+  ['DIAS_AVISO_REUNION', '1', 'Cuántos días antes de la reunión se manda el recordatorio a todos'],
+  ['URL_APP', '', 'Dirección de la página (la que termina en /exec). Se usa en los enlaces de los mails']
 ];
+
+var LETRAS_CLAVE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I, que se confunden
 
 var VOTOS_VALIDOS = ['A favor', 'En contra', 'Abstención'];
 var ESTADO_ABIERTO = 'Abierto';
@@ -91,6 +98,19 @@ function categoria(estado, votosEnRonda) {
   if (estado === ESTADO_FINALIZADO) return 'Finalizado';
   if (estado === 'Aprobado' || estado === 'Rechazado') return 'Terminado';
   return votosEnRonda > 0 ? 'En curso' : 'Pendiente';
+}
+
+/** Clave personal al azar de 8 letras y números fáciles de leer. */
+function generarClave() {
+  var c = '';
+  for (var i = 0; i < 8; i++) c += LETRAS_CLAVE.charAt(Math.floor(Math.random() * LETRAS_CLAVE.length));
+  return c;
+}
+
+/** Normaliza lo que escribe la persona: mayúsculas, sin espacios ni guiones. */
+function normalizarClave(texto) {
+  var c = String(texto || '').toUpperCase().replace(/[\s-]/g, '');
+  return /^[A-Z0-9]{6,20}$/.test(c) ? c : '';
 }
 
 /** Fecha sin hora (medianoche del mismo día). */
@@ -147,22 +167,22 @@ function instalar() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   Object.keys(COLUMNAS).forEach(function (nombre) {
     var hoja = ss.getSheetByName(nombre) || ss.insertSheet(nombre);
-    if (hoja.getLastRow() === 0) {
-      hoja.appendRow(COLUMNAS[nombre]);
-      hoja.getRange(1, 1, 1, COLUMNAS[nombre].length).setFontWeight('bold');
-      hoja.setFrozenRows(1);
-    }
+    // Escribe los títulos (también agrega columnas nuevas a una planilla ya instalada).
+    hoja.getRange(1, 1, 1, COLUMNAS[nombre].length).setValues([COLUMNAS[nombre]]).setFontWeight('bold');
+    hoja.setFrozenRows(1);
   });
 
   var config = ss.getSheetByName(HOJAS.CONFIG);
-  if (config.getLastRow() === 1) {
-    config.getRange(2, 1, CONFIG_INICIAL.length, 3).setValues(CONFIG_INICIAL);
-  }
+  var clavesExistentes = config.getDataRange().getValues().map(function (f) { return f[0]; });
+  CONFIG_INICIAL.forEach(function (fila) {
+    if (clavesExistentes.indexOf(fila[0]) < 0) config.appendRow(fila);
+  });
 
   var miembros = ss.getSheetByName(HOJAS.MIEMBROS);
   if (miembros.getLastRow() === 1) {
-    miembros.appendRow(['(tu nombre)', Session.getEffectiveUser().getEmail()]);
+    miembros.appendRow(['(tu nombre)', Session.getEffectiveUser().getEmail(), '']);
   }
+  completarClaves_();
 
   var hojaVacia = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (hojaVacia && hojaVacia.getLastRow() === 0 && ss.getSheets().length > 1) {
@@ -174,8 +194,9 @@ function instalar() {
   });
   ScriptApp.newTrigger('revisionDiaria').timeBased().everyDays(1).atHour(8).create();
 
-  var mensaje = 'Listo. Completá la hoja "Miembros" con los 4 nombres y mails, ' +
-    'y revisá la hoja "Configuracion".';
+  var mensaje = 'Listo. Revisá la hoja "Miembros" (nombres, mails y claves) y la hoja ' +
+    '"Configuracion". Cuando la página esté publicada, pegá su dirección en URL_APP y usá ' +
+    'el menú ONG > Enviar enlaces personales.';
   try {
     SpreadsheetApp.getUi().alert(mensaje);
   } catch (e) {
@@ -187,6 +208,7 @@ function instalar() {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('ONG')
     .addItem('Instalar / reparar', 'instalar')
+    .addItem('Enviar enlaces personales', 'enviarEnlaces')
     .addItem('Mandar avisos de hoy ahora', 'revisionDiaria')
     .addToUi();
 }
@@ -195,22 +217,23 @@ function onOpen() {
 // Página web
 // ---------------------------------------------------------------------------
 
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+function doGet(e) {
+  var plantilla = HtmlService.createTemplateFromFile('Index');
+  plantilla.clave = normalizarClave(e && e.parameter ? e.parameter.c : '');
+  return plantilla.evaluate()
     .setTitle('Expedientes')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /** Todo lo que la página necesita mostrar. */
-function obtenerDatos() {
-  var yo = usuarioActual_();
+function obtenerDatos(clave) {
+  var yo = usuarioActual_(clave);
   var config = leerConfig_();
   if (!yo.miembro) {
-    return { acceso: false, email: yo.email, nombreOng: config.NOMBRE_ONG,
-             diagnostico: 'activo="' + yo.activo + '" efectivo="' + yo.efectivo + '" v2' };
+    return { acceso: false, claveEscrita: !!normalizarClave(clave), nombreOng: config.NOMBRE_ONG };
   }
-  var miembros = leerMiembros_();
+  var miembros = leerMiembros_().map(function (m) { return { nombre: m.nombre, email: m.email }; });
   var votos = leerVotos_();
   var tz = Session.getScriptTimeZone();
   var hoy = new Date();
@@ -256,8 +279,8 @@ function obtenerDatos() {
 }
 
 /** Alta de un expediente desde la página. */
-function crearExpediente(datos) {
-  var yo = exigirMiembro_();
+function crearExpediente(clave, datos) {
+  var yo = exigirMiembro_(clave);
   var tema = String(datos.tema || '').trim();
   var propuesta = String(datos.propuesta || '').trim();
   var responsable = String(datos.responsable || '').trim().toLowerCase();
@@ -281,12 +304,12 @@ function crearExpediente(datos) {
   } finally {
     lock.releaseLock();
   }
-  return obtenerDatos();
+  return obtenerDatos(clave);
 }
 
 /** Registra (o cambia) el voto del usuario en la ronda actual y cierra el tema si corresponde. */
-function votar(numero, voto) {
-  var yo = exigirMiembro_();
+function votar(clave, numero, voto) {
+  var yo = exigirMiembro_(clave);
   if (VOTOS_VALIDOS.indexOf(voto) < 0) throw new Error('Voto no válido.');
 
   var lock = LockService.getScriptLock();
@@ -344,12 +367,12 @@ function votar(numero, voto) {
   } finally {
     lock.releaseLock();
   }
-  return obtenerDatos();
+  return obtenerDatos(clave);
 }
 
 /** El responsable de un expediente aprobado marca que ya lo hizo. */
-function marcarHecho(numero) {
-  var yo = exigirMiembro_();
+function marcarHecho(clave, numero) {
+  var yo = exigirMiembro_(clave);
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -368,7 +391,7 @@ function marcarHecho(numero) {
   } finally {
     lock.releaseLock();
   }
-  return obtenerDatos();
+  return obtenerDatos(clave);
 }
 
 // ---------------------------------------------------------------------------
@@ -394,7 +417,7 @@ function revisionDiaria() {
       htmlBody: '<p>Hola ' + escapar_(nombreDe_(miembros, e.responsable)) + ',</p>' +
         '<p>El expediente <b>#' + e.numero + ' — ' + escapar_(e.tema) + '</b>, del que sos responsable, ' +
         'vence <b>' + cuando + '</b> (' + Utilities.formatDate(e.vencimiento, tz, 'dd/MM/yyyy') + ').</p>' +
-        enlace_() + pie_(config)
+        enlace_(miembros.filter(function (m) { return m.email === e.responsable; })[0]) + pie_(config)
     });
     hojaExp.getRange(e.fila, 11).setValue(new Date());
     registrar_('sistema', 'Aviso de vencimiento', '#' + e.numero + ' a ' + e.responsable);
@@ -412,7 +435,7 @@ function revisionDiaria() {
       'Reunión ' + Utilities.formatDate(reunion, tz, "EEEE dd/MM 'a las' HH:mm"),
       '<p>Les recordamos la reunión del <b>' +
       Utilities.formatDate(reunion, tz, "EEEE dd/MM 'a las' HH:mm") + '</b>.</p>' +
-      '<p>Temas abiertos para tratar y votar:</p>' + lista + enlace_());
+      '<p>Temas abiertos para tratar y votar:</p>' + lista);
     registrar_('sistema', 'Recordatorio de reunión', abiertos.length + ' temas abiertos');
   }
 }
@@ -448,7 +471,10 @@ function leerConfig_() {
 function leerMiembros_() {
   return filas_(HOJAS.MIEMBROS)
     .filter(function (f) { return String(f[1]).indexOf('@') > 0; })
-    .map(function (f) { return { nombre: String(f[0]).trim(), email: String(f[1]).trim().toLowerCase() }; });
+    .map(function (f, i) {
+      return { fila: i + 2, nombre: String(f[0]).trim(), email: String(f[1]).trim().toLowerCase(),
+               clave: normalizarClave(f[2]) };
+    });
 }
 
 function leerExpedientes_() {
@@ -482,29 +508,66 @@ function registrar_(email, accion, detalle) {
   hoja_(HOJAS.HISTORIAL).appendRow([new Date(), email, accion, detalle]);
 }
 
-function usuarioActual_() {
-  var activo = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  // La aplicación web se publica como "Usuario que accede": el programa corre con la
-  // cuenta de quien entra, así que el usuario efectivo es esa misma persona. Sirve de
-  // respaldo cuando Google no informa el usuario activo.
-  var efectivo = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
-  var email = activo || efectivo;
-  var miembro = !!email && leerMiembros_().some(function (m) { return m.email === email; });
-  return { email: email, miembro: miembro, activo: activo, efectivo: efectivo };
+function usuarioActual_(clave) {
+  var c = normalizarClave(clave);
+  var m = c ? leerMiembros_().filter(function (x) { return x.clave === c; })[0] : null;
+  return m ? { email: m.email, nombre: m.nombre, miembro: true } : { email: '', miembro: false };
 }
 
-/** Para correr desde el editor si algo no anda: muestra qué lee el sistema. */
-function diagnostico() {
-  Logger.log('Usuario activo: "' + Session.getActiveUser().getEmail() + '"');
-  Logger.log('Usuario efectivo: "' + Session.getEffectiveUser().getEmail() + '"');
-  Logger.log('Miembros leídos: ' + JSON.stringify(leerMiembros_()));
-  Logger.log('Configuración: ' + JSON.stringify(leerConfig_()));
-}
-
-function exigirMiembro_() {
-  var yo = usuarioActual_();
-  if (!yo.miembro) throw new Error('Tu cuenta no está en la lista de miembros.');
+function exigirMiembro_(clave) {
+  var yo = usuarioActual_(clave);
+  if (!yo.miembro) throw new Error('La clave personal no es válida. Volvé a entrar con el enlace del mail.');
   return yo;
+}
+
+/** Genera una clave personal a quien no tenga. */
+function completarClaves_() {
+  var hoja = hoja_(HOJAS.MIEMBROS);
+  var usadas = {};
+  leerMiembros_().forEach(function (m) { if (m.clave) usadas[m.clave] = true; });
+  leerMiembros_().forEach(function (m) {
+    if (m.clave) return;
+    var c;
+    do { c = generarClave(); } while (usadas[c]);
+    usadas[c] = true;
+    hoja.getRange(m.fila, 3).setValue(c);
+  });
+}
+
+/** Menú: manda a cada miembro su enlace personal y su clave. */
+function enviarEnlaces() {
+  completarClaves_();
+  var config = leerConfig_();
+  var url = urlApp_();
+  if (!url) {
+    SpreadsheetApp.getUi().alert('Primero pegá la dirección de la página (la que termina en /exec) ' +
+      'en la hoja Configuracion, fila URL_APP.');
+    return;
+  }
+  var miembros = leerMiembros_();
+  miembros.forEach(function (m) {
+    MailApp.sendEmail({
+      to: m.email,
+      subject: 'Tu enlace personal al sistema de expedientes — ' + config.NOMBRE_ONG,
+      htmlBody: '<p>Hola ' + escapar_(m.nombre) + ',</p>' +
+        '<p>Este es <b>tu enlace personal</b> para ver los expedientes y votar. ' +
+        'Guardalo como favorito y <b>no lo reenvíes</b>: quien lo tenga puede votar en tu nombre.</p>' +
+        '<p style="font-size:20px"><a href="' + url + '?c=' + m.clave + '">Entrar al sistema de expedientes</a></p>' +
+        '<p>Si te pide una clave, es: <b style="font-size:20px;letter-spacing:2px">' + m.clave + '</b></p>' +
+        pie_(config)
+    });
+    registrar_('sistema', 'Enlace personal enviado', m.email);
+  });
+  SpreadsheetApp.getUi().alert('Listo: se mandó el enlace personal a ' + miembros.length + ' miembro(s).');
+}
+
+function urlApp_() {
+  var config = leerConfig_();
+  var url = String(config.URL_APP || '').trim();
+  if (!url) {
+    try { url = ScriptApp.getService().getUrl() || ''; } catch (e) { url = ''; }
+  }
+  return /\/exec$/.test(url) ? url : '';
 }
 
 function nombreDe_(miembros, email) {
@@ -517,16 +580,18 @@ function parsearFecha_(texto) {
   return p ? new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3])) : null;
 }
 
+/** Un mail por persona, para que cada uno reciba su propio enlace de acceso. */
 function avisarATodos_(miembros, asunto, html) {
   var config = leerConfig_();
-  var destinos = miembros.map(function (m) { return m.email; }).join(',');
-  if (!destinos) return;
-  MailApp.sendEmail({ to: destinos, subject: asunto, htmlBody: html + pie_(config) });
+  miembros.forEach(function (m) {
+    MailApp.sendEmail({ to: m.email, subject: asunto, htmlBody: html + enlace_(m) + pie_(config) });
+  });
 }
 
-function enlace_() {
-  var url = ScriptApp.getService().getUrl();
-  return url ? '<p><a href="' + url + '">Abrir el sistema de expedientes</a></p>' : '';
+function enlace_(miembro) {
+  var url = urlApp_();
+  if (!url || !miembro || !miembro.clave) return '';
+  return '<p><a href="' + url + '?c=' + miembro.clave + '">Abrir el sistema de expedientes</a></p>';
 }
 
 function pie_(config) {
@@ -541,5 +606,6 @@ function escapar_(s) {
 if (typeof module !== 'undefined') {
   module.exports = { mayoriaNecesaria: mayoriaNecesaria, resolverVotacion: resolverVotacion,
     diasEntre: diasEntre, proximaReunion: proximaReunion,
-    debeAvisarVencimiento: debeAvisarVencimiento, categoria: categoria, esDiaDeAvisoReunion: esDiaDeAvisoReunion };
+    debeAvisarVencimiento: debeAvisarVencimiento, categoria: categoria,
+    generarClave: generarClave, normalizarClave: normalizarClave, esDiaDeAvisoReunion: esDiaDeAvisoReunion };
 }

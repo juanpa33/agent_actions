@@ -80,4 +80,18 @@ prueba('categorías del tablero: pendiente, en curso, terminado, finalizado', ()
   assert.strictEqual(L.categoria('Finalizado', 3), 'Finalizado');
 });
 
+prueba('claves personales: 8 caracteres legibles, distintas, y se aceptan con espacios o minúsculas', () => {
+  const vistas = new Set();
+  for (let i = 0; i < 200; i++) {
+    const c = L.generarClave();
+    assert.match(c, /^[A-HJ-NP-Z2-9]{8}$/);
+    vistas.add(c);
+  }
+  assert.ok(vistas.size > 195);
+  assert.strictEqual(L.normalizarClave(' abcd-2345 '), 'ABCD2345');
+  assert.strictEqual(L.normalizarClave('<script>'), '');
+  assert.strictEqual(L.normalizarClave(''), '');
+  assert.strictEqual(L.normalizarClave(undefined), '');
+});
+
 console.log(`\n${ok} pruebas pasaron.`);

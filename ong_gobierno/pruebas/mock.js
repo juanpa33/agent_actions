@@ -39,4 +39,5 @@
   }
   window.google = { script: { run: runner({}) } };
   window.confirm = function () { return true; };
+  try { localStorage.setItem('ong_clave', 'DEMO2345'); } catch (e) {}
 })();
