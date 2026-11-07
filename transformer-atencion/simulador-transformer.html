@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador Transformer</title>
+<style>
+:root{
+  --bg:#fbf8f3; --card:#ffffff; --ink:#1f2433; --muted:#5d6475; --line:#e4dfd6;
+  --accent:#5b4bdb; --accent-soft:#ece9ff; --good:#1f9d6b; --warm:#e0732f; --warm-soft:#fff1e6;
+  --q:#d64570; --k:#2f7fd6; --v:#1f9d6b;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171f; --card:#1e212c; --ink:#eceef4; --muted:#a3a9b8; --line:#30344a;
+    --accent:#9b8fff; --accent-soft:#2a2750; --good:#4cc996; --warm:#f29a5e; --warm-soft:#3a2a1e;
+    --q:#f07a9b; --k:#6eaaf0; --v:#4cc996;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171f; --card:#1e212c; --ink:#eceef4; --muted:#a3a9b8; --line:#30344a;
+  --accent:#9b8fff; --accent-soft:#2a2750; --good:#4cc996; --warm:#f29a5e; --warm-soft:#3a2a1e;
+  --q:#f07a9b; --k:#6eaaf0; --v:#4cc996;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:28px 16px 8px;max-width:960px;margin:0 auto}
+h1{font-size:clamp(1.5rem,4vw,2.2rem);line-height:1.2;margin:0 0 6px}
+h1 small{display:block;font-size:.55em;color:var(--muted);font-weight:500;margin-top:6px}
+main{max-width:960px;margin:0 auto;padding:0 16px 60px}
+.progress{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 18px}
+.progress button{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:4px 11px;font-size:.85rem;cursor:pointer}
+.progress button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.progress button.done{color:var(--accent);border-color:var(--accent)}
+.step{display:none;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 20px}
+.step.on{display:block}
+.step h2{margin:0 0 4px;font-size:1.35rem}
+.step .tag{color:var(--accent);font-weight:700;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase}
+.robot{display:flex;gap:12px;align-items:flex-start;background:var(--accent-soft);border-radius:14px;padding:12px 14px;margin:14px 0}
+.robot .face{font-size:2rem;line-height:1}
+.fun{background:var(--warm-soft);border-left:4px solid var(--warm);border-radius:8px;padding:10px 14px;margin-top:16px;font-size:.95rem}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:10px 18px;font-size:1rem;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+.btn:disabled{opacity:.35;cursor:default}
+input[type=text]{width:100%;font-size:1.1rem;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.chip{background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:8px 12px;font-weight:600;cursor:pointer;color:var(--ink)}
+.chip.sel{border-color:var(--accent);background:var(--accent-soft)}
+.chip .n{display:block;font-size:.7rem;color:var(--muted);font-weight:500}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;margin:10px 0;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;white-space:nowrap}
+th{background:var(--bg);font-weight:600}
+.bar{display:inline-block;height:12px;border-radius:3px;vertical-align:middle}
+.vec{display:flex;gap:3px;align-items:flex-end;height:46px}
+.vec span{width:14px;border-radius:3px 3px 0 0;background:var(--accent)}
+.vec span.neg{background:var(--warm)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.box{border:1px solid var(--line);border-radius:12px;padding:12px}
+.legend{font-size:.85rem;color:var(--muted)}
+.q{color:var(--q);font-weight:700}.k{color:var(--k);font-weight:700}.v{color:var(--v);font-weight:700}
+svg text{fill:var(--ink);font-weight:600}
+.probrow{display:grid;grid-template-columns:110px 1fr 52px;gap:8px;align-items:center;margin:4px 0}
+.probrow .fill{height:18px;border-radius:5px;background:var(--good)}
+.heads{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.formula{font-family:ui-monospace,Menlo,monospace;background:var(--bg);border:1px dashed var(--line);border-radius:10px;padding:10px;text-align:center;font-size:1.05rem}
+.themeT{float:right;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 10px;cursor:pointer}
+@media (max-width:520px){.probrow{grid-template-columns:80px 1fr 46px}.step{padding:18px 14px}}
+</style>
+</head>
+<body>
+<header>
+  <button class="themeT" id="themeT" aria-label="Cambiar tema">🌓 tema</button>
+  <h1>Funcionamiento de una red neuronal Transformer<small>“Attention Is All You Need” (La atención es todo lo que necesitás), explicado paso a paso</small></h1>
+</header>
+<main>
+  <nav class="progress" id="progress" aria-label="Pasos"></nav>
+
+  <!-- 0 -->
+  <section class="step" data-title="Inicio">
+    <span class="tag">Paso 0 · ¿Qué es esto?</span>
+    <h2>Un robot que aprende a leer prestando atención</h2>
+    <div class="robot"><div class="face">🤖</div><div>¡Hola! Soy <b>Atento</b>. Funciono como un <b>Transformer</b>, la red neuronal que usan los asistentes que escriben, traducen y conversan (como ChatGPT o Claude). En 2017 unos investigadores de Google escribieron un artículo llamado <i>“Attention Is All You Need”</i>. Su gran idea: <b>para entender una frase, cada palabra tiene que mirar a las otras palabras y decidir cuáles le importan más.</b> A eso le dicen <b>atención</b>.</div></div>
+    <p>Escribí una frase cortita (hasta 7 palabras) y vamos a ver qué hace el Transformer por dentro, paso a paso.</p>
+    <input type="text" id="sentence" value="el gato come pescado" maxlength="70" aria-label="Frase">
+    <div class="chips" id="examples"></div>
+    <div class="fun">💡 <b>Dato:</b> antes de los Transformers, las computadoras leían las frases palabra por palabra, como quien lee con el dedo. El Transformer mira <b>todas las palabras a la vez</b>, y por eso aprende mucho más rápido.</div>
+  </section>
+
+  <!-- 1 -->
+  <section class="step" data-title="Fichas">
+    <span class="tag">Paso 1 · Tokenización</span>
+    <h2>Cortamos la frase en fichas</h2>
+    <div class="robot"><div class="face">✂️</div><div>Lo primero que hago es cortar la frase en pedacitos llamados <b>tokens</b> (fichas). Acá cada ficha es una palabra. Cada una recibe un número de lugar: la primera es la 0, la segunda la 1, etc.</div></div>
+    <div class="chips" id="tokens"></div>
+    <div class="fun">💡 <b>Dato:</b> los modelos de verdad a veces cortan las palabras en partes más chicas, como “pesc” + “ado”. Así pueden leer palabras que nunca vieron.</div>
+  </section>
+
+  <!-- 2 -->
+  <section class="step" data-title="Números">
+    <span class="tag">Paso 2 · Embeddings</span>
+    <h2>Cada palabra se convierte en una lista de números</h2>
+    <div class="robot"><div class="face">🔢</div><div>Las computadoras no entienden letras, entienden números. Por eso cada palabra se transforma en una lista de números llamada <b>embedding</b> (vector). Es como una <b>ficha de personaje</b>: cada número dice “cuánto” tiene la palabra de una característica. Las palabras parecidas tienen listas parecidas.</div></div>
+    <p class="legend">En este simulador usamos solo 4 características para que se pueda ver: 🐾 ser vivo · 🏃 acción · 🍎 comida · 🏠 lugar/cosa. (Un modelo real usa cientos o miles, y las aprende solo.)</p>
+    <div class="scroll"><table id="embTable"></table></div>
+    <div class="fun">💡 <b>Dato:</b> en el modelo original del artículo, cada palabra tenía una lista de <b>512 números</b>.</div>
+  </section>
+
+  <!-- 3 -->
+  <section class="step" data-title="Posición">
+    <span class="tag">Paso 3 · Codificación posicional</span>
+    <h2>Le agregamos a cada palabra “dónde está”</h2>
+    <div class="robot"><div class="face">📍</div><div>Como miro todas las palabras al mismo tiempo, ¡podría confundir “el gato come pescado” con “el pescado come gato”! 🙀 Para evitarlo, a cada palabra le sumo unos números especiales que dependen de su lugar en la frase. Se calculan con <b>ondas</b> (seno y coseno), como el sonido o las olas del mar.</div></div>
+    <svg id="waves" viewBox="0 0 600 160" width="100%" role="img" aria-label="Ondas de posición"></svg>
+    <div class="scroll"><table id="posTable"></table></div>
+    <div class="fun">💡 <b>Dato:</b> es como el número de asiento en el cine: dos personas pueden ser iguales, pero el asiento te dice quién está adelante y quién atrás.</div>
+  </section>
+
+  <!-- 4 -->
+  <section class="step" data-title="Q · K · V">
+    <span class="tag">Paso 4 · Pregunta, Etiqueta y Contenido</span>
+    <h2>Cada palabra prepara tres cosas</h2>
+    <div class="robot"><div class="face">🎒</div><div>Imaginá una feria de ciencias. Cada palabra es un chico que lleva tres cosas:
+      <ul style="margin:6px 0 0;padding-left:20px">
+        <li><span class="q">Q – Pregunta (Query):</span> “¿Qué estoy buscando?”</li>
+        <li><span class="k">K – Etiqueta (Key):</span> un cartel que dice “Esto es lo que yo tengo”.</li>
+        <li><span class="v">V – Contenido (Value):</span> la información que comparte si alguien se interesa.</li>
+      </ul></div></div>
+    <p>Elegí una palabra para ver sus tres listas:</p>
+    <div class="chips" id="qkvPick"></div>
+    <div class="grid2" id="qkvBoxes"></div>
+    <div class="fun">💡 <b>Dato:</b> las tres listas salen de multiplicar el embedding por tres “tablas mágicas” (matrices) que el modelo aprende mientras estudia millones de textos.</div>
+  </section>
+
+  <!-- 5 -->
+  <section class="step" data-title="Puntajes">
+    <span class="tag">Paso 5 · Puntajes de atención</span>
+    <h2>¿Cuánto combina mi pregunta con cada etiqueta?</h2>
+    <div class="robot"><div class="face">🧮</div><div>Cada palabra compara su <span class="q">Pregunta</span> con la <span class="k">Etiqueta</span> de todas las palabras (¡incluida ella misma!). Multiplicamos número por número y sumamos: es el <b>producto punto</b>. Si da alto, ¡encontró algo interesante! Después dividimos por √4 = 2 para que los números no se agranden demasiado.</div></div>
+    <div class="formula">puntaje = (<span class="q">Q</span> · <span class="k">K</span>) ÷ √d</div>
+    <p class="legend">Filas = la palabra que pregunta. Columnas = la palabra que responde. Más oscuro = más puntaje.</p>
+    <div class="scroll"><table id="scoreTable"></table></div>
+  </section>
+
+  <!-- 6 -->
+  <section class="step" data-title="Atención">
+    <span class="tag">Paso 6 · Softmax: repartir la atención</span>
+    <h2>Convertimos los puntajes en porcentajes</h2>
+    <div class="robot"><div class="face">🥧</div><div>Cada palabra tiene <b>100% de atención para repartir</b>, como una torta. La función <b>softmax</b> convierte los puntajes en porciones: al puntaje más alto le toca la porción más grande. Tocá una palabra para ver hacia dónde mira. Las líneas más gruesas son más atención.</div></div>
+    <div class="chips" id="attPick"></div>
+    <svg id="attSvg" width="100%" viewBox="0 0 700 220" role="img" aria-label="Líneas de atención"></svg>
+    <div id="attText"></div>
+    <div class="scroll"><table id="weightTable"></table></div>
+    <div class="fun">💡 <b>Dato:</b> ¡esta es la famosa <b>atención</b> del título! El artículo mostró que con esto alcanza para entender el lenguaje, sin la memoria paso a paso que usaban las redes anteriores.</div>
+  </section>
+
+  <!-- 7 -->
+  <section class="step" data-title="Mezcla">
+    <span class="tag">Paso 7 · Mezclar los contenidos</span>
+    <h2>Cada palabra se arma un “licuado” de información</h2>
+    <div class="robot"><div class="face">🥤</div><div>Ahora cada palabra toma el <span class="v">Contenido</span> de todas y lo mezcla según los porcentajes. Si “come” le presta 40% de atención a “gato”, su licuado tiene mucho sabor a gato. ¡Así la palabra “come” ya sabe <b>quién</b> come y <b>qué</b> come!</div></div>
+    <div class="formula">Atención(<span class="q">Q</span>,<span class="k">K</span>,<span class="v">V</span>) = softmax(<span class="q">Q</span>·<span class="k">K</span>ᵀ ÷ √d) · <span class="v">V</span></div>
+    <p>Elegí una palabra y mirá cómo cambió su lista de números:</p>
+    <div class="chips" id="mixPick"></div>
+    <div id="mixBox"></div>
+    <div class="fun">💡 <b>Dato:</b> esa fórmula de arriba es exactamente la del artículo de 2017. ¡Ya la entendiste!</div>
+  </section>
+
+  <!-- 8 -->
+  <section class="step" data-title="Cabezas">
+    <span class="tag">Paso 8 · Atención multi-cabeza</span>
+    <h2>Varios detectives mirando cosas distintas</h2>
+    <div class="robot"><div class="face">🕵️</div><div>Un solo par de ojos no alcanza. El Transformer usa <b>varias cabezas de atención</b> a la vez, cada una se especializa en algo: una busca <b>quién hace qué</b>, otra mira a las <b>palabras vecinas</b>, otra busca <b>palabras parecidas</b>. Después junta lo que encontraron todas.</div></div>
+    <div class="heads" id="headPick"></div>
+    <div class="chips" id="headWord"></div>
+    <svg id="headSvg" width="100%" viewBox="0 0 700 220" role="img" aria-label="Atención de una cabeza"></svg>
+    <div class="fun">💡 <b>Dato:</b> el modelo original tenía <b>8 cabezas</b> por capa. Los modelos grandes de hoy tienen muchas más.</div>
+  </section>
+
+  <!-- 9 -->
+  <section class="step" data-title="Capas">
+    <span class="tag">Paso 9 · Pensar y repetir</span>
+    <h2>La red “piensa” y repite todo muchas veces</h2>
+    <div class="robot"><div class="face">🏗️</div><div>Después de la atención, cada palabra pasa por una pequeña red neuronal (<b>feed-forward</b>) que “piensa” sobre lo que juntó. Todo esto forma una <b>capa</b>. ¡Y el Transformer apila muchas capas, como un edificio! En cada piso las palabras entienden un poquito más.</div></div>
+    <div id="stack"></div>
+    <p class="legend">El modelo original tenía 6 capas en el <b>codificador</b> (el que lee) y 6 en el <b>decodificador</b> (el que escribe). También usa “atajos” (conexiones residuales) y “normalización” para que la información no se pierda entre pisos.</p>
+  </section>
+
+  <!-- 10 -->
+  <section class="step" data-title="Predicción">
+    <span class="tag">Paso 10 · Adivinar la próxima palabra</span>
+    <h2>¿Qué palabra viene después?</h2>
+    <div class="robot"><div class="face">🔮</div><div>Al final, la última palabra (que ya tiene información de toda la frase) se usa para calcular una <b>probabilidad</b> para cada palabra del diccionario. Elijo una, la agrego a la frase… ¡y vuelvo a empezar! Así es como los asistentes escriben textos largos: <b>una ficha por vez</b>.</div></div>
+    <div id="sentenceNow" style="font-size:1.25rem;font-weight:700;margin:8px 0"></div>
+    <div id="probs"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn" id="addWord">➕ Agregar la palabra más probable</button>
+      <button class="btn ghost" id="resetSentence">↺ Volver a la frase original</button>
+    </div>
+    <div class="fun">⚠️ <b>Importante:</b> este simulador es un “juguete”: tiene un diccionario chiquito y reglas simples para que se vea claro. Un Transformer real aprende todo eso solo, leyendo muchísimo texto.</div>
+  </section>
+
+  <!-- 11 -->
+  <section class="step" data-title="Resumen">
+    <span class="tag">Paso 11 · Resumen</span>
+    <h2>¡Ya sabés cómo funciona un Transformer! 🎉</h2>
+    <ol>
+      <li><b>Fichas:</b> corta la frase en tokens.</li>
+      <li><b>Números:</b> cada token se vuelve una lista de números (embedding).</li>
+      <li><b>Posición:</b> se suman ondas para saber el orden.</li>
+      <li><b>Q, K, V:</b> cada palabra arma su Pregunta, Etiqueta y Contenido.</li>
+      <li><b>Puntajes:</b> compara Preguntas con Etiquetas.</li>
+      <li><b>Softmax:</b> reparte el 100% de atención.</li>
+      <li><b>Mezcla:</b> junta los Contenidos según la atención.</li>
+      <li><b>Multi-cabeza:</b> varios detectives miran cosas distintas.</li>
+      <li><b>Capas:</b> se repite todo muchas veces.</li>
+      <li><b>Predicción:</b> adivina la próxima palabra y vuelve a empezar.</li>
+    </ol>
+    <h3>Mini desafío 🧠</h3>
+    <div id="quiz"></div>
+    <div class="fun">📚 Basado en: Vaswani y otros, <i>“Attention Is All You Need”</i> (2017), arXiv:1706.03762.</div>
+  </section>
+
+  <div class="nav">
+    <button class="btn ghost" id="prev">← Anterior</button>
+    <button class="btn" id="next">Siguiente →</button>
+  </div>
+</main>
+
+<script>
+(function(){
+// ---------- tema ----------
+const root=document.documentElement;
+try{const t=localStorage.getItem('tf-theme');if(t)root.dataset.theme=t;}catch(e){}
+document.getElementById('themeT').onclick=()=>{
+  const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme=dark?'light':'dark';
+  try{localStorage.setItem('tf-theme',root.dataset.theme);}catch(e){}
+};
+
+// ---------- diccionario de juguete: [ser vivo, acción, comida, lugar/cosa] ----------
+const FEAT=['🐾','🏃','🍎','🏠'];
+const VOCAB={
+  el:[.1,0,0,.1],la:[.1,0,0,.1],los:[.1,0,0,.1],las:[.1,0,0,.1],un:[.1,0,0,.1],una:[.1,0,0,.1],
+  gato:[1,.1,0,0],perro:[1,.1,0,0],niño:[1,.2,0,0],niña:[1,.2,0,0],maestra:[1,.2,0,0],robot:[.6,.3,0,.4],pájaro:[1,.2,0,0],
+  come:[.1,1,0,0],juega:[.1,1,0,.3],corre:[.2,1,0,.2],lee:[.1,1,0,.4],salta:[.2,1,0,.1],bebe:[.1,1,0,0],
+  pescado:[.3,0,1,0],manzana:[0,0,1,.1],pizza:[0,0,1,.1],leche:[0,0,1,0],
+  pelota:[0,.2,0,1],libro:[0,0,0,1],parque:[0,.1,0,1],casa:[0,0,0,1],escuela:[0,.1,0,1],jardín:[0,.1,0,1],
+  en:[0,.2,0,.5],con:[.2,.2,0,.3],y:[.1,.1,.1,.1],feliz:[.6,.3,0,0],grande:[.2,0,0,.5],rojo:[0,0,.2,.5]
+};
+const CAT=w=>{const e=VOCAB[w];if(!e)return 'otra';
+  if(['el','la','los','las','un','una'].includes(w))return 'articulo';
+  if(['en','con'].includes(w))return 'enlace'; if(w==='y')return 'y';
+  const i=e.indexOf(Math.max(...e));return ['vivo','accion','comida','cosa'][i];};
+function hashVec(w){let h=2166136261;for(const c of w){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
+  const r=[];for(let i=0;i<4;i++){h^=h>>>13;h=Math.imul(h,1274126177);r.push(((h>>>0)%100)/200);}return r;}
+const emb=w=>VOCAB[w]?VOCAB[w].slice():hashVec(w);
+
+// matrices "aprendidas" (hechas a mano para que se entiendan)
+const WQ=[[0,3,0,0],[3,0,3,0],[0,3,0,0],[1.5,3,0,0]]; // qué busca cada característica
+const WK=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+const WV=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+const mul=(v,M)=>M[0].map((_,j)=>v.reduce((s,x,i)=>s+x*M[i][j],0));
+const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+const softmax=a=>{const m=Math.max(...a);const e=a.map(x=>Math.exp(x-m));const s=e.reduce((p,c)=>p+c,0);return e.map(x=>x/s);};
+const f2=x=>(Math.round(x*100)/100).toFixed(2);
+const pct=x=>Math.round(x*100)+'%';
+const PS=0.25; // escala de posición
+const posEnc=p=>[Math.sin(p),Math.cos(p),Math.sin(p/100),Math.cos(p/100)].map(x=>x*PS);
+
+let S={};
+let original='el gato come pescado';
+function compute(text){
+  let words=text.toLowerCase().replace(/[^a-záéíóúñü\s]/gi,' ').split(/\s+/).filter(Boolean).slice(0,7);
+  if(!words.length)words=['hola'];
+  const E=words.map(emb), P=words.map((_,i)=>posEnc(i)), X=E.map((e,i)=>e.map((x,j)=>x+P[i][j]));
+  const Q=X.map(x=>mul(x,WQ)),K=X.map(x=>mul(x,WK)),V=X.map(x=>mul(x,WV));
+  const sc=Q.map(q=>K.map(k=>dot(q,k)/2));
+  const W=sc.map(softmax);
+  const O=W.map(r=>V[0].map((_,j)=>r.reduce((s,w,i)=>s+w*V[i][j],0)));
+  // cabezas
+  const H={
+    'quién hace qué':W,
+    'vecinas':words.map((_,i)=>softmax(words.map((_,j)=>Math.abs(i-j)===1?2:(i===j?.5:-1.5)))),
+    'parecidas':X.map(a=>softmax(X.map(b=>dot(a,b)/(Math.hypot(...a)*Math.hypot(...b)+1e-9)*4)))
+  };
+  S={words,E,P,X,Q,K,V,sc,W,O,H};
+}
+
+// ---------- helpers de dibujo ----------
+const $=id=>document.getElementById(id);
+function vecBars(v,max=1.4){return '<div class="vec">'+v.map(x=>`<span class="${x<0?'neg':''}" style="height:${Math.max(3,Math.abs(x)/max*44)}px" title="${f2(x)}"></span>`).join('')+'</div>';}
+function heat(x,max){const a=Math.max(0,Math.min(1,x/max));return `background:color-mix(in srgb, var(--accent) ${Math.round(a*80)}%, transparent);${a>.55?'color:#fff;':''}`;}
+function picker(id,sel,onPick){const el=$(id);el.innerHTML=S.words.map((w,i)=>`<button class="chip ${i===sel?'sel':''}" data-i="${i}">${w}<span class="n">#${i}</span></button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>onPick(+b.dataset.i));}
+function attSvg(svg,M,i){
+  const n=S.words.length,wd=700,gap=wd/(n+1);let s='';
+  const xs=S.words.map((_,j)=>gap*(j+1));
+  M[i].forEach((w,j)=>{s+=`<path d="M${xs[i]} 52 C ${xs[i]} 110, ${xs[j]} 110, ${xs[j]} 168" fill="none" stroke="var(--accent)" stroke-opacity="${.15+w*.85}" stroke-width="${1+w*16}" stroke-linecap="round"/>`;});
+  S.words.forEach((w,j)=>{
+    s+=`<text x="${xs[j]}" y="38" text-anchor="middle" font-size="22" style="${j===i?'fill:var(--q)':''}">${w}</text>`;
+    s+=`<text x="${xs[j]}" y="192" text-anchor="middle" font-size="22">${w}</text>`;
+    s+=`<text x="${xs[j]}" y="214" text-anchor="middle" font-size="17" style="fill:var(--muted);font-weight:500">${pct(M[i][j])}</text>`;});
+  svg.innerHTML=s;
+}
+
+// ---------- render de cada paso ----------
+let selQKV=0,selAtt=0,selMix=0,selHead='quién hace qué',selHeadW=0;
+function defaultSel(){const i=S.words.findIndex(w=>CAT(w)==='accion');return i>=0?i:S.words.length-1;}
+
+function renderAll(){
+  const n=S.words.length;
+  [selQKV,selAtt,selMix,selHeadW]=[selQKV,selAtt,selMix,selHeadW].map(x=>Math.min(x,n-1));
+  $('tokens').innerHTML=S.words.map((w,i)=>`<span class="chip">${w}<span class="n">ficha #${i}${VOCAB[w]?'':' · nueva'}</span></span>`).join('');
+  $('embTable').innerHTML='<tr><th>Palabra</th>'+FEAT.map(f=>`<th>${f}</th>`).join('')+'<th>Dibujo</th></tr>'+
+    S.words.map((w,i)=>`<tr><th>${w}</th>${S.E[i].map(x=>`<td>${f2(x)}</td>`).join('')}<td>${vecBars(S.E[i])}</td></tr>`).join('');
+  if(S.words.some(w=>!VOCAB[w])) $('embTable').insertAdjacentHTML('afterend','');
+  // ondas
+  let s='';const cols=['var(--q)','var(--k)'];
+  [0,1].forEach(d=>{let p='';for(let x=0;x<=600;x+=4){const pos=x/600*7;const y=80-Math.sin(pos+d*Math.PI/2)*55;p+=(x?'L':'M')+x+' '+y;}s+=`<path d="${p}" fill="none" stroke="${cols[d]}" stroke-width="2.5"/>`;});
+  S.words.forEach((w,i)=>{const x=i/7*600;s+=`<line x1="${x}" x2="${x}" y1="15" y2="145" stroke="var(--line)" stroke-dasharray="4"/><circle cx="${x}" cy="${80-Math.sin(i)*55}" r="6" fill="var(--q)"/><text x="${x+4}" y="156" font-size="13">${w}</text>`;});
+  $('waves').innerHTML=s;
+  $('posTable').innerHTML='<tr><th>Palabra</th><th>Lugar</th><th>Números de posición</th><th>Embedding + posición</th></tr>'+
+    S.words.map((w,i)=>`<tr><th>${w}</th><td>#${i}</td><td>${S.P[i].map(f2).join(' · ')}</td><td>${vecBars(S.X[i])}</td></tr>`).join('');
+  // QKV
+  picker('qkvPick',selQKV,i=>{selQKV=i;renderAll();});
+  const box=(lab,cls,v,txt)=>`<div class="box"><div class="${cls}">${lab}</div>${vecBars(v,2.2)}<div class="legend">${v.map(f2).join(' · ')}</div><div style="font-size:.9rem;margin-top:6px">${txt}</div></div>`;
+  const i=selQKV,w=S.words[i];
+  const qTop=FEAT[S.Q[i].indexOf(Math.max(...S.Q[i]))],kTop=FEAT[S.K[i].indexOf(Math.max(...S.K[i]))];
+  $('qkvBoxes').innerHTML=box('Q · Pregunta','q',S.Q[i],`“${w}” busca sobre todo ${qTop}`)+box('K · Etiqueta','k',S.K[i],`“${w}” ofrece sobre todo ${kTop}`)+box('V · Contenido','v',S.V[i],`La información que “${w}” comparte`);
+  // puntajes
+  const mx=Math.max(...S.sc.flat());
+  $('scoreTable').innerHTML='<tr><th>pregunta ↓ / responde →</th>'+S.words.map(w=>`<th>${w}</th>`).join('')+'</tr>'+
+    S.sc.map((r,i)=>`<tr><th>${S.words[i]}</th>${r.map(x=>`<td style="${heat(x,mx)}">${f2(x)}</td>`).join('')}</tr>`).join('');
+  // atención
+  picker('attPick',selAtt,i=>{selAtt=i;renderAll();});
+  attSvg($('attSvg'),S.W,selAtt);
+  const r=S.W[selAtt],best=r.map((x,j)=>[x,j]).filter(p=>p[1]!==selAtt).sort((a,b)=>b[0]-a[0])[0];
+  $('attText').innerHTML=best?`<p>👀 “<b>${S.words[selAtt]}</b>” le presta más atención a “<b>${S.words[best[1]]}</b>” (${pct(best[0])}).</p>`:'';
+  $('weightTable').innerHTML='<tr><th></th>'+S.words.map(w=>`<th>${w}</th>`).join('')+'<th>Total</th></tr>'+
+    S.W.map((r,i)=>`<tr><th>${S.words[i]}</th>${r.map(x=>`<td style="${heat(x,.7)}">${pct(x)}</td>`).join('')}<td>100%</td></tr>`).join('');
+  // mezcla
+  picker('mixPick',selMix,i=>{selMix=i;renderAll();});
+  const m=selMix;
+  $('mixBox').innerHTML=`<div class="grid2"><div class="box"><b>Antes</b> (solo “${S.words[m]}”)${vecBars(S.X[m],1.4)}<div class="legend">${S.X[m].map(f2).join(' · ')}</div></div>
+    <div class="box"><b>Después</b> (con información de las demás)${vecBars(S.O[m],1.4)}<div class="legend">${S.O[m].map(f2).join(' · ')}</div></div></div>
+    <p class="legend">Receta del licuado: ${S.W[m].map((x,j)=>`${pct(x)} de “${S.words[j]}”`).join(' + ')}</p>`;
+  // cabezas
+  $('headPick').innerHTML=Object.keys(S.H).map(h=>`<button class="chip ${h===selHead?'sel':''}" data-h="${h}">🕵️ ${h}</button>`).join('');
+  $('headPick').querySelectorAll('button').forEach(b=>b.onclick=()=>{selHead=b.dataset.h;renderAll();});
+  picker('headWord',selHeadW,i=>{selHeadW=i;renderAll();});
+  attSvg($('headSvg'),S.H[selHead],selHeadW);
+  // capas
+  $('stack').innerHTML=[6,5,4,3,2,1].map(k=>`<div class="box" style="margin:4px auto;max-width:${380+k*30}px;text-align:center;background:color-mix(in srgb,var(--accent) ${k*7}%,transparent)">Piso ${k}: 🕵️ atención multi-cabeza → 🧠 feed-forward</div>`).join('')+
+    `<div style="text-align:center;margin-top:6px" class="legend">⬆️ entra la frase “${S.words.join(' ')}”</div>`;
+  renderProbs();
+}
+
+// ---------- predicción de juguete ----------
+const NEXT={
+  articulo:['gato','perro','niño','niña','pelota','libro','parque'],
+  vivo:['come','juega','corre','lee','salta','bebe'],
+  accion:['pescado','manzana','pizza','en','con','leche'],
+  comida:['y','en','con','.'],
+  cosa:['y','con','.','en'],
+  enlace:['el','la','un','casa','parque','escuela'],
+  y:['el','la','juega','corre','come'],
+  otra:['y','el','la','.']
+};
+function renderProbs(){
+  const last=S.words[S.words.length-1];
+  const cand=NEXT[CAT(last)]||NEXT.otra;
+  // puntaje: orden de la lista + afinidad con la salida de atención de la última palabra
+  const o=S.O[S.O.length-1];
+  const logits=cand.map((w,r)=>2-r*.45+(VOCAB[w]?dot(o,VOCAB[w])*.6:0)-(S.words.includes(w)?1.5:0));
+  const p=softmax(logits).map((x,j)=>[cand[j],x]).sort((a,b)=>b[1]-a[1]);
+  S.best=p[0][0];
+  $('sentenceNow').textContent='“'+S.words.join(' ')+' …”';
+  $('probs').innerHTML=p.map(([w,x])=>`<div class="probrow"><b>${w}</b><div class="fill" style="width:${Math.max(2,x*100)}%"></div><span>${pct(x)}</span></div>`).join('');
+  $('addWord').disabled=S.words.length>=7||S.best==='.';
+  $('addWord').textContent=S.words.length>=7?'Frase completa (máx. 7)':S.best==='.'?'La frase terminó ( . )':`➕ Agregar “${S.best}”`;
+}
+$('addWord').onclick=()=>{compute(S.words.join(' ')+' '+S.best);$('sentence').value=S.words.join(' ');renderAll();};
+$('resetSentence').onclick=()=>{$('sentence').value=original;compute(original);renderAll();};
+
+// ---------- entrada ----------
+const EX=['el gato come pescado','la niña lee un libro','el perro juega en el parque','el robot bebe leche'];
+$('examples').innerHTML=EX.map(e=>`<button class="chip">${e}</button>`).join('');
+$('examples').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('sentence').value=b.textContent;update();});
+function update(){original=$('sentence').value;compute(original);selQKV=selAtt=selMix=selHeadW=defaultSel();renderAll();}
+$('sentence').addEventListener('input',update);
+
+// ---------- quiz ----------
+const QZ=[
+ ['¿Para qué sirve la codificación posicional?',['Para saber el orden de las palabras','Para pintar las palabras','Para borrar palabras'],0],
+ ['En la feria de ciencias, la “Pregunta” (Q) es…',['Lo que la palabra comparte','Lo que la palabra está buscando','El número de asiento'],1],
+ ['Después del softmax, la atención de cada palabra suma…',['10%','50%','100%'],2],
+ ['¿Cómo escribe un Transformer un texto largo?',['Todo de una vez','Una ficha por vez','Copiando de internet'],1]
+];
+$('quiz').innerHTML=QZ.map((q,i)=>`<div class="box" style="margin:8px 0"><b>${i+1}. ${q[0]}</b><div class="chips">${q[1].map((o,j)=>`<button class="chip" data-q="${i}" data-o="${j}">${o}</button>`).join('')}</div><div id="qr${i}"></div></div>`).join('');
+$('quiz').querySelectorAll('button').forEach(b=>b.onclick=()=>{const i=+b.dataset.q,ok=+b.dataset.o===QZ[i][2];
+  $('qr'+i).innerHTML=ok?'<span style="color:var(--good);font-weight:700">✅ ¡Correcto!</span>':'<span style="color:var(--warm);font-weight:700">🤔 Casi… probá otra vez.</span>';});
+
+// ---------- navegación ----------
+const steps=[...document.querySelectorAll('.step')];let cur=0;
+$('progress').innerHTML=steps.map((s,i)=>`<button data-i="${i}">${i}. ${s.dataset.title}</button>`).join('');
+const pb=[...$('progress').querySelectorAll('button')];
+pb.forEach(b=>b.onclick=()=>go(+b.dataset.i));
+function go(i){cur=Math.max(0,Math.min(steps.length-1,i));
+  steps.forEach((s,j)=>s.classList.toggle('on',j===cur));
+  pb.forEach((b,j)=>{b.classList.toggle('on',j===cur);b.classList.toggle('done',j<cur);});
+  $('prev').disabled=cur===0;$('next').disabled=cur===steps.length-1;
+  $('next').textContent=cur===steps.length-2?'Ver resumen →':'Siguiente →';
+  window.scrollTo({top:0,behavior:'smooth'});}
+$('prev').onclick=()=>go(cur-1);$('next').onclick=()=>go(cur+1);
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1);});
+
+update();go(0);
+})();
+</script>
+</body>
+</html>
